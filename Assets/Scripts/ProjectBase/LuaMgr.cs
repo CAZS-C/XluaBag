@@ -87,5 +87,8 @@ public class LuaMgr : BaseManager<LuaMgr>
     {
         luaEnv.Tick();
         luaEnv.Dispose();
+        
     }
+    
+    
 }
