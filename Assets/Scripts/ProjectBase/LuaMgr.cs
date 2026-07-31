@@ -35,7 +35,8 @@ public class LuaMgr : BaseManager<LuaMgr>
         //测试传入的参数是什么
         Debug.Log(filepath);
         //决定Lua文件所在路径
-        string path = Application.dataPath + "/Lua/" + filepath + ".lua";
+        //将 require 中的点号转为路径分隔符，例如 "Bag.BagPanelCtrl" → "Bag/BagPanelCtrl"
+        string path = Application.dataPath + "/Lua/" + filepath.Replace(".", "/") + ".lua";
         //C#自带的文件读取类
         if (File.Exists(path))
         {
@@ -51,11 +52,19 @@ public class LuaMgr : BaseManager<LuaMgr>
     private byte[] MyCustomLoaderFormAB(ref string filepath)
     {
         //改为我们的AB包管理器加载
-        TextAsset file2 = ABMgr.GetInstance().LoadRes<TextAsset>("lua", filepath + ".lua");
-        if (file2 != null)
-            return file2.bytes;
-        else
-            Debug.Log("MyCustomLoaderFormAB重定向失败");
+        //无需转换点号，AB 中文件路径统一使用斜杠
+        try
+        {
+            TextAsset file2 = ABMgr.GetInstance().LoadRes<TextAsset>("lua", filepath.Replace(".", "/") + ".lua");
+            if (file2 != null)
+                return file2.bytes;
+            else
+                Debug.Log("MyCustomLoaderFormAB重定向失败");
+        }
+        catch (System.Exception e)
+        {
+            Debug.Log("AB包尚未构建，从AB加载Lua失败：" + e.Message);
+        }
         return null;
     }
 
