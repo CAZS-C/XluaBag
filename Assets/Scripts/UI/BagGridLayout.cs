@@ -35,6 +35,10 @@ public class BagGridLayout : MonoBehaviour
     private int totalRows;
     private float cellStepY;
 
+    // 缓存上一次可视索引范围，只有范围变化时才重建格子（避免滚动惯性期间每帧全量重建）
+    private int lastStartIndex = -1;
+    private int lastEndIndex = -1;
+
     // Lua 绑定回调：onCellBind(index, cellGo)，每帧可见范围变化时触发
     public System.Action<int, GameObject> onCellBind;
 
@@ -59,6 +63,10 @@ public class BagGridLayout : MonoBehaviour
     {
         itemCount = count;
         totalRows = Mathf.Max(1, Mathf.CeilToInt((float)itemCount / colCount));
+
+        // 重置可视范围缓存，强制重建格子
+        lastStartIndex = -1;
+        lastEndIndex = -1;
 
         // 总高度 = 行数 * (格子高 + 间距) + 上下边距
         float contentHeight = totalRows * cellStepY + padding.top + padding.bottom;
@@ -91,11 +99,19 @@ public class BagGridLayout : MonoBehaviour
         firstRow = Mathf.Max(0, firstRow - 1);
         lastRow = Mathf.Min(totalRows - 1, lastRow + 1);
 
-        // 回收旧格子，取出新格子
-        pool.RecycleAll();
-
         int startIndex = firstRow * colCount;
         int endIndex = Mathf.Min(lastRow * colCount + colCount - 1, itemCount - 1);
+
+        // 可视索引范围未变化时直接跳过重建（此时格子保持原状，不动 Recycle/Get）
+        if (startIndex == lastStartIndex && endIndex == lastEndIndex)
+        {
+            return;
+        }
+        lastStartIndex = startIndex;
+        lastEndIndex = endIndex;
+
+        // 范围变了：先回收旧格子，再取出新格子
+        pool.RecycleAll();
 
         for (int i = startIndex; i <= endIndex; i++)
         {

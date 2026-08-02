@@ -23,7 +23,9 @@ local BagPanelCtrl = {}
 local grid
 local inventoryMgr
 local displayToUid = {}   -- 显示位置(0-based) → 物品实例 uid
+local displayToCell = {}  -- 显示位置(0-based) → 格子 GameObject（用于更新选中高亮）
 local currentTabType = "Equipment"
+local selectedUid = 0     -- 当前选中的物品 uid（0 = 未选中）
 local refreshing = false  -- 防重入标志：Sort 发事件 → Refresh 回调 → 再 Sort 会死循环
 
 -- Tab 路径和类型映射，与预制体中的命名一致
@@ -46,6 +48,9 @@ function BagPanelCtrl.Init()
 
     -- 获取 InventoryManager（数据源）
     inventoryMgr = CS.InventoryManager.GetInstance()
+
+    -- 注入格子点击回调：点击格子 → uid 反查真实槽位 → 选中
+    ItemCellCtrl.onCellClick = BagPanelCtrl.OnCellClick
 
     -- 订阅背包数据变化事件（XLua 用 "+" 字符串订阅 C# 事件），变化时刷新当前 Tab
     CS.InventoryEvent.OnSlotChanged("+", function(data)
@@ -101,6 +106,7 @@ function BagPanelCtrl.Refresh()
 
     -- 2. 遍历槽位，筛选当前 Tab 类型，同时记录显示位置 → uid 映射
     displayToUid = {}
+    displayToCell = {}
     local slots = inventoryMgr.Slots
     local realSlotCount = slots.Count
 
@@ -134,12 +140,44 @@ function BagPanelCtrl.Refresh()
     refreshing = false
 end
 
+-- 格子点击回调：用 uid 反查真实槽位并选中
+function BagPanelCtrl.OnCellClick(cellGo, uid)
+    if uid == nil or uid <= 0 then
+        return
+    end
+
+    -- 切换选中：点同一个格子取消选中，否则选中新格子
+    if selectedUid == uid then
+        selectedUid = 0
+    else
+        selectedUid = uid
+    end
+
+    -- 通知数据层选中状态（广播 OnSelectionChanged）
+    local slotIdx = inventoryMgr:GetSlotIndexByUid(uid)
+    if slotIdx >= 0 then
+        inventoryMgr:SelectSlot(selectedUid > 0 and slotIdx or -1)
+    end
+
+    -- 刷新所有格子的高亮
+    BagPanelCtrl.RefreshSelected()
+end
+
+-- 根据 selectedUid 刷新所有格子高亮
+function BagPanelCtrl.RefreshSelected()
+    for pos, cellGo in pairs(displayToCell) do
+        local uid = displayToUid[pos]
+        ItemCellCtrl.SetSelected(cellGo, uid == selectedUid)
+    end
+end
+
 function BagPanelCtrl.OnCellBind(index, cellGo)
     -- index 是 C# 传入的 0-based 显示位置
     local uid = displayToUid[index + 1]
     if not uid then
         return
     end
+    displayToCell[index + 1] = cellGo
 
     -- 用 uid 反查真实槽位，渲染物品
     local slotIdx = inventoryMgr:GetSlotIndexByUid(uid)
@@ -151,11 +189,16 @@ function BagPanelCtrl.OnCellBind(index, cellGo)
     local def = slot.instance.Definition
 
     ItemCellCtrl.Bind(cellGo, {
-        itemId = slot.instance.defId,
-        count  = slot.count,
-        icon   = nil,
-        name   = def and def.name or "",
+        itemId  = slot.instance.defId,
+        uid     = slot.instance.uid,
+        count   = slot.count,
+        quality = def and def.quality or 1,
+        icon    = def and def.iconPath or nil,
+        name    = def and def.name or "",
     })
+
+    -- 恢复选中高亮（滚动重绑格子后保持选中状态）
+    ItemCellCtrl.SetSelected(cellGo, uid == selectedUid)
 end
 
 return BagPanelCtrl

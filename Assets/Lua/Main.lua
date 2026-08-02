@@ -12,7 +12,7 @@ local function AddTestItems()
         return
     end
     if pd.inventorySlots.Count == 0 then
-        pd:InitInventory(60)
+        pd:InitInventory(120)
     end
 
     local inv = CS.InventoryManager.GetInstance()
@@ -21,26 +21,40 @@ local function AddTestItems()
         return
     end
 
-    -- 装备（品质 1~4 混搭，验证按品质降序排列）
-    local ok1 = inv:AddItem(1001, 1)   -- 铁剑       品质1
-    local ok2 = inv:AddItem(1005, 1)   -- 钢盾       品质2
-    local ok3 = inv:AddItem(1009, 1)   -- 火焰之剑   品质3
-    local ok4 = inv:AddItem(1016, 1)   -- 龙骨战锤   品质4
-    local ok5 = inv:AddItem(1013, 1)   -- 霜噬之刃   品质3
+    -- ════════════════════════════════════════
+    -- 装备：全部 20 件（品质 1~4），凑 2 页
+    -- ════════════════════════════════════════
+    for i = 1001, 1020 do
+        inv:AddItem(i, 1)
+    end
 
-    -- 消耗品
-    local ok6 = inv:AddItem(2001, 20)  -- 生命药水
-    local ok7 = inv:AddItem(2007, 10)  -- 大回复药水
-    local ok8 = inv:AddItem(2016, 2)   -- 狂暴药剂   品质4
+    -- 再补 10 件高品质装备（堆叠重复，验证排序稳定性），凑满 3 页
+    for i = 1, 10 do
+        inv:AddItem(1016 + (i % 4), 1)   -- 1016~1019 品质4装备循环
+    end
 
-    -- 宝石
-    local ok9 = inv:AddItem(3001, 12)  -- 红宝石     品质2
-    local ok10 = inv:AddItem(3006, 4)  -- 攻击红宝石 品质3
-    local ok11 = inv:AddItem(3011, 1)  -- 龙炎红宝石 品质4
+    -- ════════════════════════════════════════
+    -- 消耗品：全部 20 组（带数量）
+    -- ════════════════════════════════════════
+    for i = 2001, 2020 do
+        inv:AddItem(i, 5)
+    end
 
-    print("[Main] AddItem 结果: " .. tostring(ok1) .. " " .. tostring(ok2) .. " " .. tostring(ok3)
-        .. " " .. tostring(ok4) .. " " .. tostring(ok5) .. " " .. tostring(ok6) .. " " .. tostring(ok7)
-        .. " " .. tostring(ok8) .. " " .. tostring(ok9) .. " " .. tostring(ok10) .. " " .. tostring(ok11))
+    -- ════════════════════════════════════════
+    -- 宝石：全部 15 种
+    -- ════════════════════════════════════════
+    for i = 3001, 3015 do
+        inv:AddItem(i, 3)
+    end
+
+    -- 统计
+    local filled = 0
+    for i = 0, pd.inventorySlots.Count - 1 do
+        if pd.inventorySlots[i].instance ~= nil then
+            filled = filled + 1
+        end
+    end
+    print("[Main] 测试数据添加完成，非空格子数: " .. filled)
 end
 
 AddTestItems()
