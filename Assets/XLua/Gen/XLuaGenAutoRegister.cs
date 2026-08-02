@@ -46,6 +46,24 @@ namespace XLua.CSObjectWrap
             translator.DelayWrapLoader(typeof(BagItemPool), BagItemPoolWrap.__Register);
         
         
+            translator.DelayWrapLoader(typeof(InventoryManager), InventoryManagerWrap.__Register);
+        
+        
+            translator.DelayWrapLoader(typeof(PlayerData), PlayerDataWrap.__Register);
+        
+        
+            translator.DelayWrapLoader(typeof(ItemDefinition), ItemDefinitionWrap.__Register);
+        
+        
+            translator.DelayWrapLoader(typeof(ItemInstance), ItemInstanceWrap.__Register);
+        
+        
+            translator.DelayWrapLoader(typeof(ItemSlot), ItemSlotWrap.__Register);
+        
+        
+            translator.DelayWrapLoader(typeof(InventoryEvent), InventoryEventWrap.__Register);
+        
+        
             translator.DelayWrapLoader(typeof(object), SystemObjectWrap.__Register);
         
         
@@ -156,6 +174,10 @@ namespace XLua.CSObjectWrap
         
             translator.DelayWrapLoader(typeof(XLuaTest.MyEnum), XLuaTestMyEnumWrap.__Register);
         
+        }
+        
+        static void wrapInit1(LuaEnv luaenv, ObjectTranslator translator)
+        {
         
             translator.DelayWrapLoader(typeof(XLuaTest.NoGc), XLuaTestNoGcWrap.__Register);
         
@@ -174,10 +196,6 @@ namespace XLua.CSObjectWrap
         
             translator.DelayWrapLoader(typeof(XLuaTest.Foo1Child), XLuaTestFoo1ChildWrap.__Register);
         
-        }
-        
-        static void wrapInit1(LuaEnv luaenv, ObjectTranslator translator)
-        {
         
             translator.DelayWrapLoader(typeof(XLuaTest.Foo2Child), XLuaTestFoo2ChildWrap.__Register);
         

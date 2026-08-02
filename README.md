@@ -15,8 +15,10 @@
 | 阶段 | 内容 | 状态 |
 |------|------|------|
 | S1 | 预制体结构（BagPanel / BagItemCell / MainPanel） | ✅ |
+| S2 | 数据层（`ItemDefinition` / `ItemInstance` / `ItemSlot` / `PlayerData` / `ConfigManager`） | ✅ 已跑通 |
+| S3 | 数据管理层（`InventoryManager` / `InventoryEvent`，增删改查/堆叠/移动/筛选/排序/事件） | ✅ 已跑通 |
 | S4 | 虚拟网格渲染（`BagGridLayout.cs` + `BagItemPool.cs`） | ✅ 已跑通 |
-| S5 | Lua 业务层（`BagPanelCtrl.lua` + `ItemConfig.lua` 59 条数据） | ✅ 已跑通 |
+| S5 | Lua 业务层接入真实数据（`BagPanelCtrl.lua` 从 InventoryManager 读数据 + 真实排序 + uid 锚定） | ✅ 已跑通 |
 | S6 | 格子交互（`ItemCellCtrl.lua` 绑定/选中高亮） | ✅ 已跑通 |
 | — | XLua 桥接（`GenConfig.cs` + 生成的 Wrap 代码） | ✅ |
 | — | 基础设施（`LuaMgr` / `ABMgr` / 单例基类 / `Main.cs`） | ✅ |
@@ -116,7 +118,5 @@ Lua: BagPanelCtrl.OnTabChanged("Equip")
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
-| S2 | 数据层：`ItemDefinition` / `ItemInstance` / `ItemSlot` / `PlayerData` | ❌ 未开始 |
-| S3 | 数据管理层：`InventoryManager` / `InventoryEvent` / `EventSystem` | ❌ 未开始 |
+| S6 扩展 | 右键菜单 / 拖拽 / Tooltip / 排序规则（SortLogic/FilterLogic） | ❌ 后续 |
 | S7 | 联调 + 存档闭环 + 截图压测 | ❌ 未开始 |
-| S6 扩展 | 右键菜单 / 拖拽 / Tooltip | ❌ 后续 |

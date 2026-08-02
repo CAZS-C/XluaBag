@@ -21,6 +21,12 @@ public static class GenConfig
         typeof(TMPro.TextMeshProUGUI),
         typeof(BagGridLayout),
         typeof(BagItemPool),
+        typeof(InventoryManager),
+        typeof(PlayerData),
+        typeof(ItemDefinition),
+        typeof(ItemInstance),
+        typeof(ItemSlot),
+        typeof(InventoryEvent),
     };
 
     [CSharpCallLua]
@@ -29,5 +35,7 @@ public static class GenConfig
         typeof(Action<int, GameObject>),
         typeof(Action<int>),
         typeof(Action),
+        typeof(Action<SlotChangeData>),
+        typeof(Action<int, int>),
     };
 }

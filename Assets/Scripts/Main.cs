@@ -8,6 +8,8 @@ public class Main : MonoBehaviour
     void Start()
     {
         LuaMgr.GetInstance().Init();
+        // 先加载配置表（物品定义注册表），供后续 Lua 业务逻辑使用
+        ConfigManager.LoadItemConfig();
         LuaMgr.GetInstance().DoLuaFile("Main");
     }
 

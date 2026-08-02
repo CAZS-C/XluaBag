@@ -13,6 +13,10 @@ public class LuaMgr : BaseManager<LuaMgr>
 
     public void Init()
     {
+        //防止重复创建 LuaEnv（Main 和测试脚本可能都调用 Init）
+        if (luaEnv != null)
+            return;
+
         //唯一的解析器
         luaEnv = new LuaEnv();
         //添加重定向委托函数

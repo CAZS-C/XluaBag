@@ -340,7 +340,7 @@ Lua: ItemCellCtrl.Bind(cellGo, slotData)
   └── 隐藏 imgSelect                  ← 清选中
 ```
 
-### 4.3 Tab 切换流程
+### 4.3 Tab 切换流程（S5 改造后：真实数据 + 真实排序）
 
 ```
 用户点击 TabItem
@@ -350,25 +350,29 @@ Toggle.onValueChanged(true)
   │
   ▼
 Lua: BagPanelCtrl.OnTabChanged("Item")
-  ├── 清空 filteredItems
-  ├── 遍历 ItemConfig，筛选 type=="Consumable"
-  ├── filteredItems → 20 条
-  └── grid:Refresh(20)
+  ├── InventoryManager.Sort()          ← C# 真实重排槽位（品质降序）
+  ├── 遍历 inventorySlots，筛选 type=="Consumable"
+  ├── 建立 displayToUid 映射（显示位置 → 物品 uid）
+  └── grid:Refresh(#displayToUid)
         │
         ▼
-  C#: BagGridLayout.Refresh(20)
+  C#: BagGridLayout.Refresh(count)
       └── 同 4.2 网格刷新流程
 ```
 
-### 4.4 回调关系总表
+### 4.4 回调关系总表（S5 改造后）
 
 | 调用方 | 被调用方 | 方式 | 方向 |
 |--------|---------|------|------|
+| `Main.cs` (C#) | `ConfigManager` (C#) | 静态方法 `LoadItemConfig` | C# → C# |
 | `Main.cs` (C#) | `Main.lua` (Lua) | `DoLuaFile -> require` | C# → Lua |
 | `BagPanelCtrl.Init` (Lua) | `BagGridLayout.cs` (C#) | `GetComponent` 赋值 `onCellBind` | Lua → C# |
+| `BagPanelCtrl.Refresh` (Lua) | `InventoryManager.Sort` (C#) | `inventoryMgr:Sort()` | Lua → C# |
 | `BagPanelCtrl.OnTabChanged` (Lua) | `BagGridLayout.Refresh` (C#) | `grid:Refresh(count)` | Lua → C# |
 | `BagGridLayout.OnScroll` (C#) | `BagPanelCtrl.OnCellBind` (Lua) | `onCellBind?.Invoke` | C# → Lua |
-| `BagPanelCtrl.OnCellBind` (Lua) | `ItemCellCtrl.Bind` (Lua) | `require` 模块调用 | Lua → Lua |
+| `BagPanelCtrl.OnCellBind` (Lua) | `InventoryManager.GetSlotIndexByUid` (C#) | uid 反查真实槽位 | Lua → C# |
+| `InventoryManager` (C#) | `InventoryEvent.OnSlotChanged` (C#) | 事件广播 | C# → C# |
+| `InventoryEvent.OnSlotChanged` (C#) | `BagPanelCtrl.Refresh` (Lua) | 事件订阅（XLua "+" 语法） | C# → Lua |
 
 ---
 
@@ -382,10 +386,16 @@ GenConfig.cs
 │     ├── Image / Button
 │     ├── TextMeshProUGUI
 │     ├── BagGridLayout
-│     └── BagItemPool
+│     ├── BagItemPool
+│     ├── InventoryManager
+│     ├── PlayerData
+│     ├── ItemDefinition / ItemInstance / ItemSlot
+│     └── InventoryEvent
 │
 └── [CSharpCallLua]                   ← 允许 C# 调用以下 Lua 委托类型
       ├── Action<int, GameObject>    ← onCellBind 回调
+      ├── Action<SlotChangeData>     ← OnSlotChanged 事件订阅
+      ├── Action<int, int>           ← OnSelectionChanged 事件订阅
       ├── Action<int>                ← 预留
       └── Action                     ← 预留
 ```
@@ -396,10 +406,26 @@ GenConfig.cs
 
 ```
 S1 ✅ 预制体结构 (BagItemCell / BagPanel / MainPanel)
-S2 ❌ 数据层 (ItemDefinition / ItemInstance / ItemSlot / PlayerData)
-S3 ❌ 数据管理层 (InventoryManager / InventoryEvent / EventSystem)
+S2 ✅ 数据层 (ItemDefinition / ItemInstance / ItemSlot / PlayerData / ConfigManager)
+S3 ✅ 数据管理层 (InventoryManager / InventoryEvent)
 S4 ✅ 虚拟网格渲染 (BagGridLayout / BagItemPool)
-S5 ✅ Lua 业务层 (BagPanelCtrl / ItemConfig)
+S5 ✅ Lua 业务层 (BagPanelCtrl 接入真实数据 + 真实排序)
 S6 ✅ 格子交互 (ItemCellCtrl)
 S7 ❌ 联调 + 存档闭环
+```
+
+---
+
+## 七、S5 关键设计：uid 锚定
+
+```
+显示位置 → 物品 uid → 反查真实槽位
+
+原因：排序后显示顺序 != 真实槽位顺序，
+      若用"显示索引 → 槽位索引"映射，数据变化后映射过期会操作错对象。
+      uid 是物品身份（全局唯一），永远指向同一个物品，交互安全。
+
+实现：
+  BagPanelCtrl.displayToUid[显示位置] = slot.instance.uid
+  OnCellBind: uid → InventoryManager.GetSlotIndexByUid(uid) → 真实槽位
 ```

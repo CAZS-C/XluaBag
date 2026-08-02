@@ -19,6 +19,12 @@
 	<assembly fullname="Assembly-CSharp">
 	    <type fullname="BagGridLayout" preserve="all"/>
 		<type fullname="BagItemPool" preserve="all"/>
+		<type fullname="InventoryManager" preserve="all"/>
+		<type fullname="PlayerData" preserve="all"/>
+		<type fullname="ItemDefinition" preserve="all"/>
+		<type fullname="ItemInstance" preserve="all"/>
+		<type fullname="ItemSlot" preserve="all"/>
+		<type fullname="InventoryEvent" preserve="all"/>
 		<type fullname="Tutorial.BaseClass" preserve="all"/>
 		<type fullname="Tutorial.TestEnum" preserve="all"/>
 		<type fullname="Tutorial.DerivedClass" preserve="all"/>
