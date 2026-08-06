@@ -21,21 +21,33 @@ public class InventoryManager : SingletonMono<InventoryManager>
     private int curSelectedIndex = -1;
 
     /// <summary>
-    /// 引用 PlayerData 的槽位列表（单一数据源）
+    /// 引用 PlayerData 的槽位列表（单一数据源）。
+    /// 首次访问时懒初始化：消除对 PlayerData.Awake 执行顺序的依赖，
+    /// 无论组件 Awake 先后，第一次使用背包时保证列表已建好。
     /// </summary>
     public List<ItemSlot> Slots
     {
-        get { return PlayerData.GetInstance().inventorySlots; }
+        get
+        {
+            PlayerData pd = PlayerData.GetInstance();
+            if (pd == null)
+            {
+                Debug.LogError("InventoryManager.Slots：场景中未挂载 PlayerData");
+                return new List<ItemSlot>();
+            }
+            if (pd.inventorySlots.Count == 0)
+            {
+                pd.InitInventory(maxSlots);
+            }
+            return pd.inventorySlots;
+        }
     }
 
     protected override void Awake()
     {
         base.Awake();
-        // 保证 PlayerData 已就绪且背包已初始化
-        if (PlayerData.GetInstance() != null && Slots.Count == 0)
-        {
-            PlayerData.GetInstance().InitInventory(maxSlots);
-        }
+        // 首次访问 Slots 时懒初始化（见 Slots 属性），这里无需额外处理。
+        // 时序无关：即使 PlayerData.Awake 晚于本组件，首次用背包时也会自动初始化。
     }
 
     /// <summary>

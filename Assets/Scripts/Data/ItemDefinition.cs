@@ -45,6 +45,15 @@ public class ItemDefinition
     public string iconPath;         // AB 内图标路径（如 "icon/sword_01"）
     public int stackMax;            // 最大堆叠数量（装备=1，药水可堆叠）
 
+    /// <summary>
+    /// 品质数值（Lua 友好）：XLua 的枚举不能做算术/作 table 键，
+    /// 提供 int 属性供 Lua 直接读取（如 QUALITY_COLORS[def.qualityValue]）。
+    /// </summary>
+    public int qualityValue
+    {
+        get { return (int)quality; }
+    }
+
     // 全局静态注册表：id → Definition
     private static Dictionary<int, ItemDefinition> allDefinitions = new Dictionary<int, ItemDefinition>();
 

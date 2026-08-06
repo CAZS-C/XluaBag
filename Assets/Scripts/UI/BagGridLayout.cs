@@ -50,6 +50,10 @@ public class BagGridLayout : MonoBehaviour
         cellStepY = cellSize.y + spacing.y;
         scrollRect.onValueChanged.AddListener(OnScroll);
 
+        // pool 兜底：未在 Inspector 指定时自动查找同节点上的 BagItemPool
+        if (pool == null)
+            pool = GetComponent<BagItemPool>();
+
         // RectOffset 不能在字段初始化器中 new，放在 Awake 中初始化
         if (padding == null)
             padding = new RectOffset(12, 12, 12, 12);

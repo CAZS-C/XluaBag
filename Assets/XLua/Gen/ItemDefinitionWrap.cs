@@ -21,11 +21,12 @@ namespace XLua.CSObjectWrap
         {
 			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
 			System.Type type = typeof(ItemDefinition);
-			Utils.BeginObjectRegister(type, L, translator, 0, 0, 6, 6);
+			Utils.BeginObjectRegister(type, L, translator, 0, 0, 7, 6);
 			
 			
 			
-			Utils.RegisterFunc(L, Utils.GETTER_IDX, "id", _g_get_id);
+			Utils.RegisterFunc(L, Utils.GETTER_IDX, "qualityValue", _g_get_qualityValue);
+            Utils.RegisterFunc(L, Utils.GETTER_IDX, "id", _g_get_id);
             Utils.RegisterFunc(L, Utils.GETTER_IDX, "name", _g_get_name);
             Utils.RegisterFunc(L, Utils.GETTER_IDX, "type", _g_get_type);
             Utils.RegisterFunc(L, Utils.GETTER_IDX, "quality", _g_get_quality);
@@ -192,6 +193,20 @@ namespace XLua.CSObjectWrap
         
         
         
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _g_get_qualityValue(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                ItemDefinition gen_to_be_invoked = (ItemDefinition)translator.FastGetCSObj(L, 1);
+                LuaAPI.xlua_pushinteger(L, gen_to_be_invoked.qualityValue);
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 1;
+        }
         
         [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
         static int _g_get_id(RealStatePtr L)

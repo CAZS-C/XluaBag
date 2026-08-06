@@ -22,6 +22,7 @@ local BagPanelCtrl = {}
 
 local grid
 local inventoryMgr
+local initialized = false -- Init 防重入：避免重复订阅事件 / 重复绑定回调
 local displayToUid = {}   -- 显示位置(0-based) → 物品实例 uid
 local displayToCell = {}  -- 显示位置(0-based) → 格子 GameObject（用于更新选中高亮）
 local currentTabType = "Equipment"
@@ -36,6 +37,12 @@ local TAB_CONFIG = {
 }
 
 function BagPanelCtrl.Init()
+    -- 防重入：Init 只执行一次，避免重复订阅事件导致一次变化触发多次刷新
+    if initialized then
+        return
+    end
+    initialized = true
+
     local content = CS.UnityEngine.GameObject.Find("Canvas/BagPanel/svBag/Viewport/Content")
     if content == nil then
         return
@@ -192,7 +199,7 @@ function BagPanelCtrl.OnCellBind(index, cellGo)
         itemId  = slot.instance.defId,
         uid     = slot.instance.uid,
         count   = slot.count,
-        quality = def and def.quality or 1,
+        quality = def and def.qualityValue or 1,
         icon    = def and def.iconPath or nil,
         name    = def and def.name or "",
     })
