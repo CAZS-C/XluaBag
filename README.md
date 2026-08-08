@@ -6,11 +6,11 @@
 
 ---
 
-## 分支状态：firsttime
+## 进度状态：master（当前主线）
 
-`firsttime` 分支完成了背包 UI 的**可运行版本**：虚拟滚动网格 + Lua 业务控制器 + XLua 桥接，已跑通 Play Mode 验证。
+主分支已合并 `firsttime` 的开发成果，形成背包 UI 的**可运行版本**：虚拟滚动网格 + Lua 业务控制器 + XLua 桥接，已跑通 Play Mode 验证。
 
-### 本分支完成内容
+### 已合并进 master 的内容
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
@@ -51,6 +51,8 @@ Assets/
 ├── Scripts/                            # C# 稳定框架层
 │   ├── Main.cs                         # 入口：初始化 LuaEnv 并加载 Main.lua
 │   ├── GenConfig.cs                    # XLua 代码生成配置
+│   ├── Data/                           # 数据模型 + 配置（ItemDefinition/ItemInstance/ItemSlot/PlayerData/ConfigManager）
+│   ├── Inventory/                      # 数据管理层（InventoryManager / InventoryEvent）
 │   ├── ProjectBase/                    # 基础框架（单例 / AB / Lua 管理器）
 │   └── UI/                             # 虚拟网格体系
 │       ├── BagGridLayout.cs            # 虚拟化网格布局（挂在 Content 上）
@@ -59,7 +61,7 @@ Assets/
 ├── Lua/                                # Lua 可热更业务层
 │   ├── Main.lua                        # 入口
 │   ├── Bag/
-│   │   ├── BagPanelCtrl.lua            # 背包面板控制器（Tab 切换 / 数据过滤）
+│   │   ├── BagPanelCtrl.lua            # 背包面板控制器（Tab 切换 / 数据过滤 / 排序）
 │   │   └── ItemCellCtrl.lua            # 格子 UI 控制器
 │   └── Config/
 │       └── ItemConfig.lua              # 物品配置表（当前为假数据）
@@ -67,10 +69,11 @@ Assets/
 ├── ABRes/Prefabs/UI/                   # 可打 AB 包的预制体
 │   ├── BagPanel.prefab                 # 背包面板
 │   ├── BagItemCell.prefab              # 单个格子
-│   └── MainPanel.prefab                # 主面板
+│   └── MainPanel.prefab                # 主导航面板
 │
 ├── ArtRes/UI/                          # 美术资源（图标 / 按钮 / 背景）
-├── MD/                                 # 设计文档
+├── MD/                                 # 设计文档（方案 / UML 类图）
+├── Resources/ItemIcons/               # 运行时加载的物品图标
 ├── Scenes/SampleScene.unity            # 当前场景
 └── XLua/                               # XLua 框架源码 + 生成代码
 ```
@@ -108,7 +111,7 @@ Lua: BagPanelCtrl.OnTabChanged("Equip")
 
 - [开发商业背包UI的方案(MVS)](Assets/MD/开发商业背包UI的方案(MVS).md) — 背包 UI 业务方案
 - [搭背包格子方案](Assets/MD/搭背包格子方案.md) — 虚拟滚动 + 对象池方案
-- [背包系统架构方案(简练级)](Assets/MD/背包系统架构方案(简练级).md) — 核心架构（S1–S7 实施步骤）
+- [背包系统架构方案(简历级)](Assets/MD/背包系统架构方案(简历级).md) — 核心架构（S1–S7 实施步骤）
 - [该项目的背包系统架构以及最终成果的初步预想](Assets/MD/该项目的背包系统架构以及最终成果的初步预想.md) — ARPG 远景规划
 - [项目UML类图](Assets/MD/项目UML类图.md) — 代码结构图
 
