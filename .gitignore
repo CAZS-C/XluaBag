@@ -104,4 +104,11 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
-\n# Project-specific\n.trae/\n.mcp.json\n.remember/\n
+
+# Project-specific
+.trae/
+.mcp.json
+.remember/
+
+# Personal interview prep (not for version control)
+/面试准备.md
