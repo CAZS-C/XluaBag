@@ -15,6 +15,14 @@ public class UIButtonFeedback : MonoBehaviour, IPointerDownHandler, IPointerUpHa
 
     private void Awake()
     {
+        // 防御：物品格子是对象池复用的，激活/定位前可能还是预制体缩放；
+        // 这类格子不应该挂点击缩放，否则手动点击会恢复到错误的 originalScale。
+        if (GetComponent<ItemCellRightClick>() != null)
+        {
+            enabled = false;
+            return;
+        }
+
         originalScale = transform.localScale;
         selectable = GetComponent<Selectable>();
     }

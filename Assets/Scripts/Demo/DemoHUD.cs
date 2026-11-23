@@ -183,6 +183,11 @@ public class DemoHUD : MonoBehaviour
         Button[] buttons = canvas.GetComponentsInChildren<Button>(true);
         for (int i = 0; i < buttons.Length; i++)
         {
+            // 物品格子由对象池创建，未激活时仍是预制体根缩放 3.0769；
+            // 在这里加 UIButtonFeedback 会缓存错误 originalScale，手动点击后恢复成 3 倍大小。
+            // 格子本身已有选中高亮，不需要按压缩放反馈。
+            if (buttons[i].GetComponent<ItemCellRightClick>() != null) continue;
+
             if (buttons[i].GetComponent<UIButtonFeedback>() == null)
             {
                 buttons[i].gameObject.AddComponent<UIButtonFeedback>();
