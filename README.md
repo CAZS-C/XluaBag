@@ -25,6 +25,7 @@
 | Phase 0 | 刷新粒度与稳定性（单格刷新 / 事件退订 / pcall / 池复用） | ✅ 已跑通 |
 | S8 | 热更新闭环（manifest 版本 + hash 差量 + 下载校验 + pending/confirm 回滚 + 发布工具） | ✅ 已跑通 |
 | S9 | 性能观测与图集化（10 图标→1 图集 + PerfHUD；Item Tab 总数未降，原因：该页图标种类少） | ✅ 实现 / 对比待补 |
+| S10 | 演示闭环（DemoScene + 四向移动 + 地面拾取 + 背包开关 + 右键使用/丢弃 + 存档/重置） | ✅ 已跑通 |
 | — | Lua 一键打包工具（`Editor/LuaBundleTool.cs`，转换 + AB 标记 + 按平台构建） | ✅ 已跑通 |
 | — | XLua 桥接（`GenConfig.cs` + 生成的 Wrap 代码） | ✅ |
 | — | 基础设施（`LuaMgr` / `ABMgr` / 单例基类 / `Main.cs`） | ✅ |
@@ -42,19 +43,31 @@
 
 ## 运行方式
 
-**只想看背包功能**：
+**完整演示（推荐）**：
 
 1. 用 Unity **2021.3.34f1c1** 打开项目
-2. 打开场景 `Assets/Scenes/SampleScene.unity`
+2. 打开场景 `Assets/Scenes/DemoScene.unity`
 3. 进入 Play Mode
-4. 屏幕中央显示背包网格，默认选中 **Equip** 标签页
-5. 可切换 **Equip / Item / Gem** 三个标签页查看过滤后的物品
+4. 操作：
+   - `WASD`：四向移动（不允许斜向）
+   - `F`：靠近地面物品时拾取
+   - `B` / `ESC` / 关闭按钮 / 右下角“背包”按钮：打开或关闭背包
+   - 左键格子：选中；右键格子：使用 / 丢弃 / 取消
+   - 打开背包时移动锁定；拾取、使用、丢弃后自动存档
+5. 初始：背包 3 件 starter，地面 6 件物品，房间一屏可见
+
+**只看压力/性能基线**：
+
+1. 打开 `Assets/Scenes/SampleScene.unity` → Play
+2. 使用独立的普通存档（`PlayerData`），首次进入会生成 67 件测试物品
+3. 可切 **Equip / Item / Gem** 三个标签页；虚拟滚动仍为 500 件 → 约 28 个活动格子
 
 **看热更新流程**：
 
 1. `cd HotUpdateServer` → `python dev_server.py --port 8000`
 2. 打开 `Assets/Scenes/LaunchScene.unity` → Play
-3. 启动场景会检查 `http://127.0.0.1:8000/PC/manifest.json`，有更新则下载后进入背包；没有则直接使用本地基础包
+3. 启动场景检查 `http://127.0.0.1:8000/PC/manifest.json`，有更新则下载，完成后进入 **DemoScene**；没有更新则直接使用本地基础包
+4. LaunchScene 的 `HotUpdateLauncher.nextSceneName` 可配置目标场景
 
 ---
 
@@ -69,6 +82,7 @@ Assets/
 │   ├── Inventory/                      # 数据管理层（InventoryManager / InventoryEvent）
 │   ├── ProjectBase/                    # 基础框架（单例 / AB / Lua 管理器）
 │   ├── HotUpdate/                      # 热更新（版本/差量/下载/校验/回滚/启动器）
+│   ├── Demo/                           # S10 演示层（移动/世界/拾取/背包壳/右键菜单/HUD）
 │   ├── Perf/                           # PerfHUD（FPS/帧时间/GC/DrawCall/Batches）
 │   └── UI/                             # 虚拟网格体系
 │       ├── BagGridLayout.cs            # 虚拟化网格布局（挂在 Content 上）
@@ -88,10 +102,10 @@ Assets/
 │   └── Perf/                           # 图标图集化 / PerfHUD 场景准备
 │
 ├── ABRes/
-│   ├── Prefabs/UI/                     # 可打 AB 包的预制体
+│   ├── Prefabs/UI/                     # UI 预制体（场景直接引用，未设 AB 名）
 │   │   ├── BagPanel.prefab             # 背包面板
 │   │   ├── BagItemCell.prefab          # 单个格子
-│   │   └── MainPanel.prefab            # 主导航面板
+│   │   └── MainPanel.prefab            # 背包按钮（主角/技能按钮已移除）
 │   ├── Lua/                            # 工具生成的 .lua.txt（AB 名 "lua"）
 │   └── HotUpdate/Banner.txt            # 公告资源（AB 名 "banner"）
 │
@@ -99,10 +113,10 @@ Assets/
 ├── ArtRes/UI/ItemIcons/                # 物品图标源文件（已移出 Resources，供图集引用）
 ├── Resources/ItemIconAtlas.spriteatlas # 运行时图集（10 张图标合并）
 ├── MD/                                 # 设计文档（方案 / UML / 压测 / 热更）
-├── Resources/ItemIcons/               # 运行时加载的物品图标
 ├── Scenes/
 │   ├── LaunchScene.unity               # 热更新启动场景
-│   └── SampleScene.unity               # 背包场景
+│   ├── DemoScene.unity                 # 完整背包演示场景（推荐入口）
+│   └── SampleScene.unity               # 压力/性能基线场景
 └── XLua/                               # XLua 框架源码 + 生成代码
 ```
 
@@ -135,7 +149,7 @@ Lua: BagPanelCtrl.OnTabChanged("Equip")
 
 ### 存档闭环（S7）
 
-数据格式为 `JsonUtility` 序列化的 `PlayerData`（金币 + 120 个槽位），存放在 `PlayerPrefs` 的 `PlayerData` 键下。
+数据格式为 `JsonUtility` 序列化的 `PlayerData`（金币 + HP + 背包槽位 + 装备 uid + 已拾取/掉落物），存放在 `PlayerPrefs` 中。`SampleScene` 使用 `PlayerData` 键，`DemoScene` 使用 `PlayerData_Demo` 键，两者互不覆盖。
 
 ```
 启动：Main.cs Start
@@ -200,10 +214,10 @@ Assets/Lua/Bag/BagPanelCtrl.lua
 LaunchScene / HotUpdateLauncher
   → 读 state.json + StreamingAssets/PC/version.json
   → GET /PC/manifest.json
-  → 按 md5 差量：只下载变化的 PC / lua / banner
+  → 按 md5 差量：只下载变化的包；未变化包复制到新版本目录
   → Res/{新版}.tmp（Range 续传 + 重试 + MD5 校验）
   → 改名为 Res/{新版} → 写 state（current/pending）
-  → 切换 ABMgr.BundleRoot → 加载 SampleScene
+  → 切换 ABMgr.BundleRoot → 加载 nextSceneName（当前 DemoScene）
   → Main.lua 成功后 confirm；下次启动 pending != confirmed 则回滚
 ```
 
@@ -218,7 +232,42 @@ LaunchScene / HotUpdateLauncher
 
 本地服务：`cd HotUpdateServer && python dev_server.py --port 8000`（支持 Range/206）。
 
-实测：v1 → v2 只下载变化的 `PC` / `lua` / `banner`；v2 的 Lua 标记、`ItemConfig` 物品名和公告文本都生效；模拟启动未确认后能自动回滚到 v1，`Res/2` 被清理。详见 [S8 热更新闭环记录](Assets/MD/S8热更新闭环记录.md)。
+实测（S8 阶段）：v1 → v2 只下载变化的 `PC` / `lua` / `banner`；v2 的 Lua 标记、`ItemConfig` 物品名和公告文本都生效；模拟启动未确认后能自动回滚到 v1，`Res/2` 被清理。详见 [S8 热更新闭环记录](Assets/MD/S8热更新闭环记录.md)。
+
+### 演示闭环（S10）
+
+`DemoScene` 用固定 2D 俯视表现承载完整的背包交互：
+
+```
+玩家四向移动
+  → 靠近地面物品显示 [F 拾取]
+  → AddItem → Toast → 立即存档
+  → B / ESC / 按钮打开背包
+  → 左键选中 / 右键菜单
+  → 使用（药水回血、装备更新 HUD）
+  → 丢弃（扣 1 个，落到脚下，可再按 F 捡回）
+  → 退出重进保持；重置按钮清空 Demo 存档
+```
+
+关键实现：
+
+| 模块 | 职责 |
+|---|---|
+| `DemoPlayerController` | 严格四向移动、边界 clamp、朝向标记 |
+| `DemoWorld` / `WorldItem` | 初始/掉落物生成、最近物品查询、拾取与存档同步 |
+| `DemoHUD` | 帮助、HP、装备、拾取提示、Toast、重置按钮 |
+| `BagPanelView` | 背包显示/隐藏、关闭按钮、`B`/`ESC`、打开后刷新 |
+| `ItemCellRightClick` | 只处理右键，不影响原有左键 Button |
+| `ItemContextMenuView` | 使用/丢弃/取消菜单，鼠标定位且限制在屏幕内 |
+| `BagPanelCtrl`（Lua） | 右键选中、使用/丢弃规则、回调清理 |
+
+存档分离：
+
+- `SampleScene` 使用 `PlayerData` 键，保留 67 件测试数据；
+- `DemoScene` 使用 `PlayerData_Demo` 键，演示可反复重置而不污染压测存档；
+- 背包、装备 uid、已拾取初始物品、地面掉落物都写入同一个 Demo 存档。
+
+实测结果见 [S10 演示闭环记录](Assets/MD/S10演示闭环记录.md)。
 
 ---
 
@@ -235,6 +284,7 @@ LaunchScene / HotUpdateLauncher
 - [Phase0 稳定性修正记录](Assets/MD/Phase0稳定性修正记录.md) — 单格刷新 / 事件退订 / 池复用实测
 - [S8 热更新闭环记录](Assets/MD/S8热更新闭环记录.md) — 版本 / 差量 / 校验 / 回滚实测
 - [S9 性能观测与图集化记录](Assets/MD/S9性能观测与图集化记录.md) — SpriteAtlas / PerfHUD 实测与结论
+- [S10 演示闭环记录](Assets/MD/S10演示闭环记录.md) — 移动/拾取/背包开关/右键使用丢弃/存档实测
 
 ---
 
@@ -242,6 +292,7 @@ LaunchScene / HotUpdateLauncher
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
-| S6 扩展 | 右键菜单 / 拖拽 / Tooltip / 排序规则（SortLogic/FilterLogic） | ❌ 后续 |
+| 交互扩展 | 拖拽换位、Tooltip、堆叠拆分、排序规则（SortLogic/FilterLogic） | ❌ 后续 |
 | S9 补测 | 装备页/宝石页或独立包 + Frame Debugger 做图集前后对比；面板图集化 | ❌ 后续 |
 | 优化 | 批量 AddItem 合并刷新（压测时发现的事件风暴） | ❌ 后续 |
+| 设备 | Android 真机首次启动拷贝基础包 / 热更流程验证 | ❌ 后续 |

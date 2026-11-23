@@ -24,6 +24,9 @@ local ItemCellCtrl = {}
 -- 点击回调，由 BagPanelCtrl.Init 注入：ItemCellCtrl.onCellClick = function(cellGo, uid) ... end
 ItemCellCtrl.onCellClick = nil
 
+-- 右键回调，由 BagPanelCtrl.Init 注入：右键选中格子并弹出使用/丢弃菜单
+ItemCellCtrl.onCellRightClick = nil
+
 local cellTransformCache = setmetatable({}, { __mode = "k" })
 
 -- 图标缓存（code review #1）：同一图标只从 Resources 加载一次，滚动重绑时复用
@@ -69,8 +72,10 @@ function ItemCellCtrl.Bind(cellGo, slotData)
             imgSelect  = trans:Find("imgSelect"):GetComponent(typeof(UI.Image)),
             txtCount   = trans:Find("txtCount"):GetComponent(typeof(TMP.TextMeshProUGUI)),
             btn        = cellGo:GetComponent(typeof(UI.Button)),
+            rightClick = cellGo:GetComponent(typeof(CS.ItemCellRightClick)),
             uid        = 0,
             onClick    = nil,
+            onRightClick = nil,
         }
         cellTransformCache[cellGo] = cache
 
@@ -84,6 +89,19 @@ function ItemCellCtrl.Bind(cellGo, slotData)
                 end
             end
             cache.btn.onClick:AddListener(cache.onClick)
+        end
+
+        -- 右键组件由 BagItemPool 运行时补上；这里再兜底一次，防止预制体路径变化
+        if cache.rightClick == nil then
+            cache.rightClick = cellGo:AddComponent(typeof(CS.ItemCellRightClick))
+        end
+        if cache.rightClick then
+            cache.onRightClick = function()
+                if ItemCellCtrl.onCellRightClick then
+                    ItemCellCtrl.onCellRightClick(cellGo, cache.uid)
+                end
+            end
+            cache.rightClick.onRightClick = cache.onRightClick
         end
     end
 
@@ -160,6 +178,10 @@ function ItemCellCtrl.Shutdown()
                 cache.btn.onClick:RemoveListener(cache.onClick)
             end)
             cache.onClick = nil
+        end
+        if cache.rightClick ~= nil then
+            cache.rightClick.onRightClick = nil
+            cache.onRightClick = nil
         end
     end
 end

@@ -21,7 +21,7 @@ namespace XLua.CSObjectWrap
         {
 			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
 			System.Type type = typeof(PlayerData);
-			Utils.BeginObjectRegister(type, L, translator, 0, 5, 3, 3);
+			Utils.BeginObjectRegister(type, L, translator, 0, 5, 7, 7);
 			
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "InitInventory", _m_InitInventory);
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "Save", _m_Save);
@@ -32,10 +32,18 @@ namespace XLua.CSObjectWrap
 			
 			Utils.RegisterFunc(L, Utils.GETTER_IDX, "gold", _g_get_gold);
             Utils.RegisterFunc(L, Utils.GETTER_IDX, "inventorySlots", _g_get_inventorySlots);
+            Utils.RegisterFunc(L, Utils.GETTER_IDX, "equippedUid", _g_get_equippedUid);
+            Utils.RegisterFunc(L, Utils.GETTER_IDX, "collectedWorldIds", _g_get_collectedWorldIds);
+            Utils.RegisterFunc(L, Utils.GETTER_IDX, "droppedItems", _g_get_droppedItems);
+            Utils.RegisterFunc(L, Utils.GETTER_IDX, "nextGroundId", _g_get_nextGroundId);
             Utils.RegisterFunc(L, Utils.GETTER_IDX, "loadedFromSave", _g_get_loadedFromSave);
             
 			Utils.RegisterFunc(L, Utils.SETTER_IDX, "gold", _s_set_gold);
             Utils.RegisterFunc(L, Utils.SETTER_IDX, "inventorySlots", _s_set_inventorySlots);
+            Utils.RegisterFunc(L, Utils.SETTER_IDX, "equippedUid", _s_set_equippedUid);
+            Utils.RegisterFunc(L, Utils.SETTER_IDX, "collectedWorldIds", _s_set_collectedWorldIds);
+            Utils.RegisterFunc(L, Utils.SETTER_IDX, "droppedItems", _s_set_droppedItems);
+            Utils.RegisterFunc(L, Utils.SETTER_IDX, "nextGroundId", _s_set_nextGroundId);
             Utils.RegisterFunc(L, Utils.SETTER_IDX, "loadedFromSave", _s_set_loadedFromSave);
             
 			
@@ -265,6 +273,62 @@ namespace XLua.CSObjectWrap
         }
         
         [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _g_get_equippedUid(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                PlayerData gen_to_be_invoked = (PlayerData)translator.FastGetCSObj(L, 1);
+                LuaAPI.xlua_pushinteger(L, gen_to_be_invoked.equippedUid);
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 1;
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _g_get_collectedWorldIds(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                PlayerData gen_to_be_invoked = (PlayerData)translator.FastGetCSObj(L, 1);
+                translator.Push(L, gen_to_be_invoked.collectedWorldIds);
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 1;
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _g_get_droppedItems(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                PlayerData gen_to_be_invoked = (PlayerData)translator.FastGetCSObj(L, 1);
+                translator.Push(L, gen_to_be_invoked.droppedItems);
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 1;
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _g_get_nextGroundId(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                PlayerData gen_to_be_invoked = (PlayerData)translator.FastGetCSObj(L, 1);
+                LuaAPI.xlua_pushinteger(L, gen_to_be_invoked.nextGroundId);
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 1;
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
         static int _g_get_loadedFromSave(RealStatePtr L)
         {
 		    try {
@@ -303,6 +367,66 @@ namespace XLua.CSObjectWrap
 			
                 PlayerData gen_to_be_invoked = (PlayerData)translator.FastGetCSObj(L, 1);
                 gen_to_be_invoked.inventorySlots = (System.Collections.Generic.List<ItemSlot>)translator.GetObject(L, 2, typeof(System.Collections.Generic.List<ItemSlot>));
+            
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 0;
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _s_set_equippedUid(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                PlayerData gen_to_be_invoked = (PlayerData)translator.FastGetCSObj(L, 1);
+                gen_to_be_invoked.equippedUid = LuaAPI.xlua_tointeger(L, 2);
+            
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 0;
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _s_set_collectedWorldIds(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                PlayerData gen_to_be_invoked = (PlayerData)translator.FastGetCSObj(L, 1);
+                gen_to_be_invoked.collectedWorldIds = (System.Collections.Generic.List<int>)translator.GetObject(L, 2, typeof(System.Collections.Generic.List<int>));
+            
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 0;
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _s_set_droppedItems(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                PlayerData gen_to_be_invoked = (PlayerData)translator.FastGetCSObj(L, 1);
+                gen_to_be_invoked.droppedItems = (System.Collections.Generic.List<PlayerData.DroppedItemData>)translator.GetObject(L, 2, typeof(System.Collections.Generic.List<PlayerData.DroppedItemData>));
+            
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 0;
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _s_set_nextGroundId(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                PlayerData gen_to_be_invoked = (PlayerData)translator.FastGetCSObj(L, 1);
+                gen_to_be_invoked.nextGroundId = LuaAPI.xlua_tointeger(L, 2);
             
             } catch(System.Exception gen_e) {
                 return LuaAPI.luaL_error(L, "c# exception:" + gen_e);

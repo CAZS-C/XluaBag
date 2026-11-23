@@ -39,7 +39,7 @@ Assets/
 │   ├── LuaBundleTool.cs                # Lua → AB 一键转换/打包（仅编辑器编译）
 │   └── HotUpdate/                      # 发布工具 + 启动场景创建
 │
-├── ABRes/                              # AB 资源包
+├── ABRes/                              # 资源目录（Lua/banner 进 AB；UI 预制体直接引用）包
 │   ├── Prefabs/UI/
 │   │   ├── BagPanel.prefab             # 背包面板
 │   │   ├── BagItemCell.prefab          # 单个格子
@@ -62,7 +62,8 @@ Assets/
 │
 ├── Scenes/
 │   ├── LaunchScene.unity               # 热更新启动场景
-│   └── SampleScene.unity               # 背包场景
+│   ├── DemoScene.unity                 # S10 完整背包演示场景
+│   └── SampleScene.unity               # 压力/性能基线场景
 │
 └── XLua/                               # XLua 框架
     ├── Src/                            # XLua 源码
@@ -403,7 +404,9 @@ GenConfig.cs
 │     ├── InventoryManager
 │     ├── PlayerData
 │     ├── ItemDefinition / ItemInstance / ItemSlot
-│     └── InventoryEvent
+│     ├── InventoryEvent
+│     └── S10: BagPanelView / ItemContextMenuView / ItemCellRightClick
+│         / DemoHUD / DemoPlayerStats / DemoWorld
 │
 └── [CSharpCallLua]                   ← 允许 C# 调用以下 Lua 委托类型
       ├── Action<int, GameObject>    ← onCellBind 回调
@@ -428,6 +431,7 @@ S7 ✅ 联调 + 存档闭环 + 性能压测 (500 物品 → 28 格；Frame Debug
 Phase 0 ✅ 刷新粒度与稳定性 (单格刷新 / EnsureSize / 事件退订 / pcall)
 S8 ✅ 热更新闭环 (manifest 版本 + hash 差量 + 下载校验 + pending/confirm 回滚)
 S9 ✅ 性能观测与图集化 (SpriteAtlas 10→1 + PerfHUD；Item Tab 总数未降，该页图标种类少)
+S10 ✅ 演示闭环 (DemoScene + 四向移动 + F 拾取 + 背包开关 + 右键使用/丢弃 + 存档/重置)
 工具 ✅ Lua 一键打包 (LuaBundleTool: .lua → .lua.txt → AB 标记 → 按平台构建)
 ```
 
@@ -446,3 +450,48 @@ S9 ✅ 性能观测与图集化 (SpriteAtlas 10→1 + PerfHUD；Item Tab 总数�
   BagPanelCtrl.displayToUid[显示位置] = slot.instance.uid
   OnCellBind: uid → InventoryManager.GetSlotIndexByUid(uid) → 真实槽位
 ```
+
+---
+
+## 八、S10 演示层
+
+```text
+DemoScene
+├── Main Camera：Main / PlayerData / InventoryManager / BagPanelView
+├── Canvas
+│   ├── MainPanel：btnBag（原主角/技能按钮已移除）
+│   ├── BagPanel：Tab / 虚拟网格 / btnClose
+│   └── DemoHUD（运行时创建）：帮助 / HP / 拾取提示 / Toast / 重置
+├── DemoRoot：DemoBootstrap
+├── DemoPlayer：DemoPlayerController + DemoPlayerStats
+├── DemoWorld：DemoWorld（生成 Ground / WorldItem）
+└── PerfHUD（DemoScene 中关闭）
+
+运行时链路：
+  Main.cs
+    → LuaMgr.Init / ConfigManager.LoadItemConfig
+    → PlayerData.SetDemoSaveKey(demoMode) / Load
+    → Main.lua（DEMO_MODE ? 3 件 starter : 67 件测试数据）
+    → DemoBootstrap.Initialize
+        → DemoHUD.Initialize
+        → BagPanelView.Hide
+        → DemoWorld.Initialize（初始 + 掉落物）
+        → DemoPlayerStats.SyncHUD
+
+拾取：
+  DemoBootstrap.Update → DemoWorld.FindNearest
+    → F → DemoWorld.TryPickup → InventoryManager.AddItem
+    → PlayerData.collectedWorldIds / droppedItems → Save
+
+右键：
+  ItemCellRightClick → BagPanelCtrl.OnCellRightClick
+    → ItemContextMenuView.Show → UseSelected / DropSelected
+    → InventoryManager.RemoveItem / DemoPlayerStats / DemoWorld.DropFromPlayer
+```
+
+Demo 存档与普通存档：
+
+- `DemoScene`：`PlayerData_Demo`
+- `SampleScene`：`PlayerData`
+
+`PlayerData` 新增 `hp`、`equippedUid`、`collectedWorldIds`、`droppedItems`、`nextGroundId`；掉落物 id 从 1000 开始，避开初始物品 1~6。

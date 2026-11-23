@@ -559,6 +559,7 @@ GameObject:
   - component: {fileID: 963194229}
   - component: {fileID: 963194231}
   - component: {fileID: 963194230}
+  - component: {fileID: 963194232}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -670,7 +671,27 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gold: 0
+  hp: 60
   inventorySlots: []
+  equippedUid: 0
+  collectedWorldIds: 
+  droppedItems: []
+  nextGroundId: 1000
+--- !u!114 &963194232
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 963194225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1edd9b1280df96042901570d48ebab51, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  panelPath: Canvas/BagPanel
+  closeButtonPath: Canvas/BagPanel/btnClose
+  bagButtonPath: Canvas/MainPanel/btnBag
 --- !u!1 &1037893705
 GameObject:
   m_ObjectHideFlags: 0

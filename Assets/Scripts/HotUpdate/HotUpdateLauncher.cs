@@ -13,6 +13,9 @@ using UnityEngine.UI;
 /// </summary>
 public class HotUpdateLauncher : MonoBehaviour
 {
+    [Header("更新完成后进入的场景")]
+    [SerializeField] private string nextSceneName = "DemoScene";
+
     private Text statusText;
     private Text noticeText;
     private Text bannerText;
@@ -102,7 +105,8 @@ public class HotUpdateLauncher : MonoBehaviour
         yield return new WaitForSeconds(0.6f);
 
         busy = false;
-        SceneManager.LoadScene("SampleScene");
+        string targetScene = string.IsNullOrEmpty(nextSceneName) ? "SampleScene" : nextSceneName;
+        SceneManager.LoadScene(targetScene);
     }
 
     private void LoadBanner()

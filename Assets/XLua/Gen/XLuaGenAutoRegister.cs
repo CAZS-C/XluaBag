@@ -67,6 +67,24 @@ namespace XLua.CSObjectWrap
             translator.DelayWrapLoader(typeof(IconAtlasLoader), IconAtlasLoaderWrap.__Register);
         
         
+            translator.DelayWrapLoader(typeof(BagPanelView), BagPanelViewWrap.__Register);
+        
+        
+            translator.DelayWrapLoader(typeof(ItemContextMenuView), ItemContextMenuViewWrap.__Register);
+        
+        
+            translator.DelayWrapLoader(typeof(ItemCellRightClick), ItemCellRightClickWrap.__Register);
+        
+        
+            translator.DelayWrapLoader(typeof(DemoHUD), DemoHUDWrap.__Register);
+        
+        
+            translator.DelayWrapLoader(typeof(DemoPlayerStats), DemoPlayerStatsWrap.__Register);
+        
+        
+            translator.DelayWrapLoader(typeof(DemoWorld), DemoWorldWrap.__Register);
+        
+        
             translator.DelayWrapLoader(typeof(object), SystemObjectWrap.__Register);
         
         
@@ -156,6 +174,10 @@ namespace XLua.CSObjectWrap
         
             translator.DelayWrapLoader(typeof(Tutorial.TestEnum), TutorialTestEnumWrap.__Register);
         
+        }
+        
+        static void wrapInit1(LuaEnv luaenv, ObjectTranslator translator)
+        {
         
             translator.DelayWrapLoader(typeof(Tutorial.DerivedClass), TutorialDerivedClassWrap.__Register);
         
@@ -174,10 +196,6 @@ namespace XLua.CSObjectWrap
         
             translator.DelayWrapLoader(typeof(XLuaTest.MyStruct), XLuaTestMyStructWrap.__Register);
         
-        }
-        
-        static void wrapInit1(LuaEnv luaenv, ObjectTranslator translator)
-        {
         
             translator.DelayWrapLoader(typeof(XLuaTest.MyEnum), XLuaTestMyEnumWrap.__Register);
         

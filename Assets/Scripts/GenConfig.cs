@@ -28,6 +28,13 @@ public static class GenConfig
         typeof(ItemSlot),
         typeof(InventoryEvent),
         typeof(IconAtlasLoader),
+        // Demo 闭环：Lua 需要访问背包壳层、右键菜单、世界掉落和 HUD
+        typeof(BagPanelView),
+        typeof(ItemContextMenuView),
+        typeof(ItemCellRightClick),
+        typeof(DemoHUD),
+        typeof(DemoPlayerStats),
+        typeof(DemoWorld),
     };
 
     [CSharpCallLua]

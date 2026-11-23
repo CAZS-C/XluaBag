@@ -1,5 +1,4 @@
-XluaBag 热更公告 v2
-1. 修复背包排序与刷新粒度问题
-2. 优化格子复用，减少 Instantiate/Destroy
-3. 物品图标合并进 SpriteAtlas，减少图标纹理断批
-4. 这条公告来自 banner AB 包，证明非 Lua 资源也能热更
+XluaBag 演示版公告 v2
+1. 新增 DemoScene：移动、拾取、打开背包、右键使用/丢弃
+2. 背包物品与地面掉落物共用存档，重进游戏可继续
+3. 这条公告来自 banner AB 包，证明非 Lua 资源也能热更

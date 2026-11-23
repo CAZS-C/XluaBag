@@ -44,6 +44,8 @@ public class ItemDefinition
     public QualityLevel quality;    // 品质等级
     public string iconPath;         // AB 内图标路径（如 "icon/sword_01"）
     public int stackMax;            // 最大堆叠数量（装备=1，药水可堆叠）
+    public int useValue;            // 使用效果数值（演示：药水回复量；0 = 无直接效果）
+    public string description;      // 物品描述（演示版用于提示，可为空）
 
     /// <summary>
     /// 品质数值（Lua 友好）：XLua 的枚举不能做算术/作 table 键，
@@ -99,6 +101,11 @@ public class ItemDefinition
         def.quality = (QualityLevel)data.Get<int>("quality");
         def.iconPath = data.Get<string>("icon") ?? "";
         def.stackMax = data.Get<int>("stackMax");
+        // 新增字段保持向后兼容：旧配置没有 useValue 时 Get<int> 会因 nil 抛异常，
+        // 所以先按 object 读取，再手动转 int。
+        object useValueObj = data.Get<object>("useValue");
+        def.useValue = useValueObj != null ? Convert.ToInt32(useValueObj) : 0;
+        def.description = data.Get<string>("description") ?? "";
 
         Register(def);
         return def;

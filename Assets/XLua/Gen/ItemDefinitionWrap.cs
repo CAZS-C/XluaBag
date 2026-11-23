@@ -21,7 +21,7 @@ namespace XLua.CSObjectWrap
         {
 			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
 			System.Type type = typeof(ItemDefinition);
-			Utils.BeginObjectRegister(type, L, translator, 0, 0, 7, 6);
+			Utils.BeginObjectRegister(type, L, translator, 0, 0, 9, 8);
 			
 			
 			
@@ -32,6 +32,8 @@ namespace XLua.CSObjectWrap
             Utils.RegisterFunc(L, Utils.GETTER_IDX, "quality", _g_get_quality);
             Utils.RegisterFunc(L, Utils.GETTER_IDX, "iconPath", _g_get_iconPath);
             Utils.RegisterFunc(L, Utils.GETTER_IDX, "stackMax", _g_get_stackMax);
+            Utils.RegisterFunc(L, Utils.GETTER_IDX, "useValue", _g_get_useValue);
+            Utils.RegisterFunc(L, Utils.GETTER_IDX, "description", _g_get_description);
             
 			Utils.RegisterFunc(L, Utils.SETTER_IDX, "id", _s_set_id);
             Utils.RegisterFunc(L, Utils.SETTER_IDX, "name", _s_set_name);
@@ -39,6 +41,8 @@ namespace XLua.CSObjectWrap
             Utils.RegisterFunc(L, Utils.SETTER_IDX, "quality", _s_set_quality);
             Utils.RegisterFunc(L, Utils.SETTER_IDX, "iconPath", _s_set_iconPath);
             Utils.RegisterFunc(L, Utils.SETTER_IDX, "stackMax", _s_set_stackMax);
+            Utils.RegisterFunc(L, Utils.SETTER_IDX, "useValue", _s_set_useValue);
+            Utils.RegisterFunc(L, Utils.SETTER_IDX, "description", _s_set_description);
             
 			
 			Utils.EndObjectRegister(type, L, translator, null, null,
@@ -292,6 +296,34 @@ namespace XLua.CSObjectWrap
             return 1;
         }
         
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _g_get_useValue(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                ItemDefinition gen_to_be_invoked = (ItemDefinition)translator.FastGetCSObj(L, 1);
+                LuaAPI.xlua_pushinteger(L, gen_to_be_invoked.useValue);
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 1;
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _g_get_description(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                ItemDefinition gen_to_be_invoked = (ItemDefinition)translator.FastGetCSObj(L, 1);
+                LuaAPI.lua_pushstring(L, gen_to_be_invoked.description);
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 1;
+        }
+        
         
         
         [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
@@ -379,6 +411,36 @@ namespace XLua.CSObjectWrap
 			
                 ItemDefinition gen_to_be_invoked = (ItemDefinition)translator.FastGetCSObj(L, 1);
                 gen_to_be_invoked.stackMax = LuaAPI.xlua_tointeger(L, 2);
+            
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 0;
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _s_set_useValue(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                ItemDefinition gen_to_be_invoked = (ItemDefinition)translator.FastGetCSObj(L, 1);
+                gen_to_be_invoked.useValue = LuaAPI.xlua_tointeger(L, 2);
+            
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 0;
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _s_set_description(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                ItemDefinition gen_to_be_invoked = (ItemDefinition)translator.FastGetCSObj(L, 1);
+                gen_to_be_invoked.description = LuaAPI.lua_tostring(L, 2);
             
             } catch(System.Exception gen_e) {
                 return LuaAPI.luaL_error(L, "c# exception:" + gen_e);

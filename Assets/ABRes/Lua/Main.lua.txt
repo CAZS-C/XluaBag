@@ -12,10 +12,11 @@ local function AddTestItems()
         return
     end
 
-    -- 本次已从存档还原（PlayerData.Load 在 Main.cs 中先于本脚本执行）：
-    -- 直接沿用存档数据，跳过测试物品，否则每次进游戏都会在存档基础上重复叠加。
-    if pd.loadedFromSave then
-        print("[Main] 检测到存档，跳过测试数据（非空格子数: " .. pd:CountNonEmptySlots() .. "）")
+    -- 本次已从存档还原且背包非空：直接沿用，避免每次进游戏都在存档基础上重复叠加。
+    -- 如果存档存在但背包为空，仍然补测试数据，方便 SampleScene 重新压测。
+    local existing = pd:CountNonEmptySlots()
+    if pd.loadedFromSave and existing > 0 then
+        print("[Main] 检测到存档，跳过测试数据（非空格子数: " .. existing .. "）")
         return
     end
 
@@ -65,7 +66,43 @@ local function AddTestItems()
     print("[Main] 测试数据添加完成，非空格子数: " .. filled)
 end
 
-AddTestItems()
+-- 演示模式只给 3 件 starter，其余物品放在 DemoScene 地面上，靠 F 拾取。
+-- 普通 SampleScene 继续使用 67 件测试数据，保留虚拟滚动/压测基线。
+local function AddStarterItems()
+    local pd = CS.PlayerData.GetInstance()
+    if pd == nil then
+        return
+    end
+
+    -- 已经读过存档且背包里确实有东西：直接沿用，避免每次进入 Demo 都重复加 starter。
+    -- 如果存档存在但背包为空（例如刚重置过），仍然补 starter，保证演示能开局。
+    local existing = pd:CountNonEmptySlots()
+    if pd.loadedFromSave and existing > 0 then
+        print("[Main] Demo 读档，跳过 starter（非空格子数: " .. existing .. "）")
+        return
+    end
+
+    if pd.inventorySlots.Count == 0 then
+        pd:InitInventory(120)
+    end
+
+    local inv = CS.InventoryManager.GetInstance()
+    if inv == nil then
+        print("[Main] InventoryManager 为 nil，无法添加 starter")
+        return
+    end
+
+    inv:AddItem(1001, 1) -- 铁剑
+    inv:AddItem(2001, 3) -- 生命药水
+    inv:AddItem(3001, 2) -- 红宝石
+    print("[Main] Demo starter 添加完成")
+end
+
+if DEMO_MODE then
+    AddStarterItems()
+else
+    AddTestItems()
+end
 
 local BagPanelCtrl = require("Bag.BagPanelCtrl")
-BagPanelCtrl.Init() --找到UI组件 绑定世界内部执行refresh.
+BagPanelCtrl.Init() -- 查找并绑定 UI 组件，随后执行首次刷新。

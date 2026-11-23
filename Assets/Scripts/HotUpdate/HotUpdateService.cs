@@ -11,7 +11,8 @@ using UnityEngine.Networking;
 /// 流程：
 ///   1. 拉远端 manifest
 ///   2. 比对本地版本与每个包的 md5，得到需要下载的包
-///   3. 下载到 Res/{新版}.tmp，支持 Range 续传 + 重试 + MD5 校验
+///   3. 下载变化的包到 Res/{新版}.tmp，支持 Range 续传 + 重试 + MD5 校验；
+///      未变化的包从当前目录复制过去，保证新版本目录是完整包目录
 ///   4. 校验全部通过后改名为 Res/{新版}，写 state（current/pending）
 ///   5. 调用方切换 AB 根目录并进入游戏；Main.lua 成功后再 confirm
 /// </summary>
@@ -131,6 +132,33 @@ public static class HotUpdateService
         string finalDir = UpdatePaths.VersionDir(manifest.resVersion);
         string tempDir = finalDir + ".tmp";
         PrepareDir(tempDir);
+
+        // 新版本目录必须是“完整包目录”，不能只放变化的包。
+        // 未变化的包从当前基础包/上一版本目录复制过去，否则切换 BundleRoot 后
+        // lua / banner 等未变化包会缺失（编辑器有本地 Lua，容易掩盖这个问题）。
+        string sourceRoot = UpdateStateStore.GetCurrentBundleRoot();
+        foreach (BundleInfo bundle in manifest.bundles)
+        {
+            if (toDownload.Exists(x => x.name == bundle.name)) continue;
+
+            string sourceFile = sourceRoot + "/" + bundle.file;
+            string targetFile = tempDir + "/" + bundle.file;
+            try
+            {
+                if (!File.Exists(sourceFile))
+                {
+                    throw new FileNotFoundException("本地缺少未变化包：" + sourceFile);
+                }
+                File.Copy(sourceFile, targetFile, true);
+                Debug.Log("[HotUpdate] 复用未变化包：" + bundle.name);
+            }
+            catch (Exception e)
+            {
+                // 复制失败时退化为下载这个包，保证新版本目录完整
+                Debug.LogWarning("[HotUpdate] 复用 " + bundle.name + " 失败，改为下载：" + e.Message);
+                toDownload.Add(bundle);
+            }
+        }
 
         long totalBytes = 0;
         for (int i = 0; i < toDownload.Count; i++) totalBytes += toDownload[i].size;

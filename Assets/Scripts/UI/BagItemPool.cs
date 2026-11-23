@@ -37,6 +37,14 @@ public class BagItemPool : MonoBehaviour
         for (int i = 0; i < size; i++)
         {
             GameObject cell = Instantiate(cellPrefab, transform);
+
+            // 右键转发组件运行时补上，避免改 BagItemCell 预制体和 PC AB；
+            // 预制体以后若自带该组件，这里不会重复添加。
+            if (cell.GetComponent<ItemCellRightClick>() == null)
+            {
+                cell.AddComponent<ItemCellRightClick>();
+            }
+
             cell.SetActive(false);
             allCells.Add(cell);
             freeCells.Enqueue(cell);

@@ -51,8 +51,38 @@ public class InventoryManager : SingletonMono<InventoryManager>
     }
 
     /// <summary>
+    /// 预检查背包是否能完整放下 count 个物品。
+    /// 用途：地面拾取前先判断，避免 AddItem 部分放入后调用方又销毁地面物品，
+    /// 造成“只捡到一部分，但地上物品已经消失”的数据丢失。
+    /// </summary>
+    public bool CanAdd(int defId, int count = 1)
+    {
+        if (count <= 0) return true;
+
+        ItemDefinition def = ItemDefinition.Get(defId);
+        if (def == null) return false;
+
+        int space = 0;
+        for (int i = 0; i < Slots.Count; i++)
+        {
+            ItemSlot slot = Slots[i];
+            if (slot.IsEmpty)
+            {
+                space += def.stackMax;
+            }
+            else if (slot.instance.defId == defId && slot.count < def.stackMax)
+            {
+                space += def.stackMax - slot.count;
+            }
+
+            if (space >= count) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// 添加物品（自动堆叠到已有同 id 槽位，再找空槽）。
-    /// 返回是否全部放入成功（false = 背包空间不足）。
+    /// 返回是否全部放入成功（false = 背包空间不足，且本次不会放入任何物品）。
     /// </summary>
     public bool AddItem(int defId, int count = 1)
     {
@@ -60,6 +90,13 @@ public class InventoryManager : SingletonMono<InventoryManager>
         if (def == null)
         {
             Debug.LogWarning($"AddItem 失败：未注册的 defId {defId}");
+            return false;
+        }
+
+        // 先做整体容量检查：失败时保持背包原状，调用方可以安全地保留地面物品
+        if (!CanAdd(defId, count))
+        {
+            Debug.LogWarning($"背包空间不足，{def.name} ×{count} 未能放入");
             return false;
         }
 

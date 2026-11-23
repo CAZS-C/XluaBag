@@ -43,6 +43,11 @@ local slotChangedHandler = nil
 -- Tab Toggle 的 Lua 监听：LuaEnv.Dispose 前必须 RemoveListener，否则 UnityEvent 会一直持有 DelegateBridge
 local tabListeners = {}
 
+-- 背包壳层与右键菜单（C# 提供显示/隐藏和 UI，业务规则留在 Lua）
+local bagView
+local contextMenu
+local contextUid = 0
+
 -- Tab 路径和类型映射，与预制体中的命名一致
 local TAB_CONFIG = {
     { path = "Canvas/BagPanel/TabEquip", type = "Equipment" },
@@ -157,6 +162,44 @@ local function SafeOnCellClick(cellGo, uid)
     end
 end
 
+local function SafeOnCellRightClick(cellGo, uid)
+    local ok, err = pcall(BagPanelCtrl.OnCellRightClick, cellGo, uid)
+    if not ok then
+        print("[BagPanelCtrl] OnCellRightClick error: " .. tostring(err))
+    end
+end
+
+local function SafeOnBagShown()
+    local ok, err = pcall(function()
+        BagPanelCtrl.HideContextMenu()
+        BagPanelCtrl.Refresh(true)
+    end)
+    if not ok then
+        print("[BagPanelCtrl] OnBagShown error: " .. tostring(err))
+    end
+end
+
+local function SafeOnBagHidden()
+    local ok, err = pcall(BagPanelCtrl.HideContextMenu)
+    if not ok then
+        print("[BagPanelCtrl] OnBagHidden error: " .. tostring(err))
+    end
+end
+
+local function SafeUseSelected()
+    local ok, err = pcall(BagPanelCtrl.UseSelected)
+    if not ok then
+        print("[BagPanelCtrl] UseSelected error: " .. tostring(err))
+    end
+end
+
+local function SafeDropSelected()
+    local ok, err = pcall(BagPanelCtrl.DropSelected)
+    if not ok then
+        print("[BagPanelCtrl] DropSelected error: " .. tostring(err))
+    end
+end
+
 function BagPanelCtrl.Init()
     -- 防重入：Init 只执行一次，避免重复订阅事件导致一次变化触发多次刷新
     if initialized then
@@ -180,6 +223,24 @@ function BagPanelCtrl.Init()
 
     -- 注入格子点击回调：点击格子 → uid 反查真实槽位 → 选中
     ItemCellCtrl.onCellClick = SafeOnCellClick
+    ItemCellCtrl.onCellRightClick = SafeOnCellRightClick
+
+    -- 背包壳层：打开时刷新、关闭时清掉右键菜单
+    bagView = CS.BagPanelView.Instance
+    if bagView ~= nil then
+        bagView.onShown = SafeOnBagShown
+        bagView.onHidden = SafeOnBagHidden
+    end
+
+    -- 右键菜单：使用/丢弃/取消的业务规则在 Lua，C# 只负责显示与定位
+    contextMenu = CS.ItemContextMenuView.Instance
+    if contextMenu ~= nil then
+        contextMenu.onUse = SafeUseSelected
+        contextMenu.onDrop = SafeDropSelected
+        contextMenu.onCancel = function()
+            contextUid = 0
+        end
+    end
 
     -- 订阅背包数据变化事件：回调保存成具名函数，Shutdown 时才能退订
     slotChangedHandler = SafeSlotChanged
@@ -224,6 +285,22 @@ function BagPanelCtrl.Shutdown()
         grid.onCellRecycled = nil
     end
     ItemCellCtrl.onCellClick = nil
+    ItemCellCtrl.onCellRightClick = nil
+
+    if bagView ~= nil then
+        bagView.onShown = nil
+        bagView.onHidden = nil
+        bagView = nil
+    end
+
+    if contextMenu ~= nil then
+        contextMenu.onUse = nil
+        contextMenu.onDrop = nil
+        contextMenu.onCancel = nil
+        contextMenu:Hide()
+        contextMenu = nil
+    end
+    contextUid = 0
 
     displayToUid = {}
     displayToSlot = {}
@@ -264,6 +341,9 @@ function BagPanelCtrl.Refresh(needSort)
     if refreshing then
         return
     end
+
+    -- 列表结构变化后，原来菜单指向的 uid 可能已经换位/消失
+    BagPanelCtrl.HideContextMenu()
     refreshing = true
 
     local ok, err = pcall(function()
@@ -294,11 +374,160 @@ function BagPanelCtrl.Refresh(needSort)
     end
 end
 
+-- 关闭右键菜单并清掉临时 uid
+function BagPanelCtrl.HideContextMenu()
+    if contextMenu ~= nil then
+        contextMenu:Hide()
+    end
+    contextUid = 0
+end
+
+function BagPanelCtrl.Notify(message)
+    if CS.DemoHUD.Instance ~= nil then
+        CS.DemoHUD.Instance:ShowToast(message)
+    else
+        print("[BagPanelCtrl] " .. tostring(message))
+    end
+end
+
+function BagPanelCtrl.Save()
+    local pd = CS.PlayerData.GetInstance()
+    if pd ~= nil then
+        pd:Save()
+    end
+end
+
+-- 右键：选中格子并在鼠标位置弹出“使用/丢弃/取消”
+function BagPanelCtrl.OnCellRightClick(cellGo, uid)
+    if uid == nil or uid <= 0 or inventoryMgr == nil then
+        return
+    end
+
+    local slotIdx = inventoryMgr:GetSlotIndexByUid(uid)
+    if slotIdx < 0 then
+        return
+    end
+
+    -- 右键不做“再次点击取消”，而是稳定选中，方便下一步使用/丢弃
+    selectedUid = uid
+    inventoryMgr:SelectSlot(slotIdx)
+    BagPanelCtrl.RefreshSelected()
+
+    local slot = inventoryMgr.Slots[slotIdx]
+    if slot == nil or slot.IsEmpty then
+        return
+    end
+    local def = slot.instance.Definition
+    if def == nil then
+        return
+    end
+
+    local canUse = def.type == CS.ItemType.Consumable or def.type == CS.ItemType.Equipment
+    local useLabel = def.type == CS.ItemType.Equipment and "装备" or "使用"
+
+    contextUid = uid
+    if contextMenu ~= nil then
+        local mouse = CS.UnityEngine.Input.mousePosition
+        contextMenu:Show(CS.UnityEngine.Vector2(mouse.x, mouse.y), canUse, useLabel)
+    end
+end
+
+-- 右键菜单“使用/装备”
+function BagPanelCtrl.UseSelected()
+    local uid = contextUid
+    BagPanelCtrl.HideContextMenu()
+    if uid <= 0 or inventoryMgr == nil then
+        return
+    end
+
+    local slotIdx = inventoryMgr:GetSlotIndexByUid(uid)
+    if slotIdx < 0 then
+        return
+    end
+    local slot = inventoryMgr.Slots[slotIdx]
+    if slot == nil or slot.IsEmpty then
+        return
+    end
+    local def = slot.instance.Definition
+    if def == nil then
+        return
+    end
+
+    if def.type == CS.ItemType.Consumable then
+        if def.useValue <= 0 then
+            BagPanelCtrl.Notify("该物品暂无使用效果")
+            return
+        end
+        local stats = CS.DemoPlayerStats.Instance
+        if stats == nil then
+            return
+        end
+        if stats:Heal(def.useValue) then
+            inventoryMgr:RemoveItem(slotIdx, 1)
+            BagPanelCtrl.Notify("使用 " .. def.name .. "，回复 " .. tostring(def.useValue) .. " HP")
+            BagPanelCtrl.Save()
+        else
+            BagPanelCtrl.Notify("生命值已满，暂时无法使用 " .. def.name)
+        end
+    elseif def.type == CS.ItemType.Equipment then
+        local stats = CS.DemoPlayerStats.Instance
+        if stats == nil then
+            return
+        end
+        stats:Equip(uid, def.name)
+        BagPanelCtrl.Notify("已装备 " .. def.name)
+        BagPanelCtrl.Save()
+    else
+        BagPanelCtrl.Notify("该物品不能直接使用")
+    end
+end
+
+-- 右键菜单“丢弃”：扣 1 个，落到玩家脚下，可再按 F 捡回
+function BagPanelCtrl.DropSelected()
+    local uid = contextUid
+    BagPanelCtrl.HideContextMenu()
+    if uid <= 0 or inventoryMgr == nil then
+        return
+    end
+
+    local slotIdx = inventoryMgr:GetSlotIndexByUid(uid)
+    if slotIdx < 0 then
+        return
+    end
+    local slot = inventoryMgr.Slots[slotIdx]
+    if slot == nil or slot.IsEmpty then
+        return
+    end
+    local def = slot.instance.Definition
+    if def == nil then
+        return
+    end
+
+    if inventoryMgr:RemoveItem(slotIdx, 1) then
+        local world = CS.DemoWorld.Instance
+        if world ~= nil then
+            world:DropFromPlayer(def.id, 1)
+        end
+
+        -- 丢掉的是当前装备时，HUD 不能继续显示它
+        local stats = CS.DemoPlayerStats.Instance
+        if stats ~= nil then
+            stats:ValidateEquipped()
+        end
+
+        BagPanelCtrl.Notify("丢弃 " .. def.name)
+        BagPanelCtrl.Save()
+    end
+end
+
 -- 格子点击回调：用 uid 反查真实槽位并选中
 function BagPanelCtrl.OnCellClick(cellGo, uid)
     if uid == nil or uid <= 0 then
         return
     end
+
+    -- 左键点其他格子时，先收起右键菜单
+    BagPanelCtrl.HideContextMenu()
 
     -- 切换选中：点同一个格子取消选中，否则选中新格子
     if selectedUid == uid then
@@ -327,6 +556,7 @@ end
 
 -- 滚动回收 / 池子重建前由 C# 调用：清空"位置 → 格子"映射
 function BagPanelCtrl.OnCellRecycled()
+    BagPanelCtrl.HideContextMenu()
     displayToCell = {}
 end
 

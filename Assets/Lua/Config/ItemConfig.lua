@@ -37,13 +37,13 @@ local ItemConfig = {
     -- ════════════════════════════════════════
     -- 消耗品（Consumable）：24 组
     -- ════════════════════════════════════════
-    [2001] = { id=2001, name="生命药水",     icon="ItemIcons/63_31100063", type="Consumable", quality=1, count=20, stackMax=99 },
+    [2001] = { id=2001, name="生命药水",     icon="ItemIcons/63_31100063", type="Consumable", quality=1, count=20, stackMax=99, useValue=30, description="回复 30 点生命值" },
     [2002] = { id=2002, name="法力药水",     icon="ItemIcons/64_31100064", type="Consumable", quality=1, count=15, stackMax=99 },
     [2003] = { id=2003, name="解毒剂",       icon="ItemIcons/65_31100065", type="Consumable", quality=1, count=8,  stackMax=99 },
     [2004] = { id=2004, name="火焰卷轴",     icon="ItemIcons/66_31100066", type="Consumable", quality=1, count=5,  stackMax=20 },
     [2005] = { id=2005, name="冰霜卷轴",     icon="ItemIcons/67_31100067", type="Consumable", quality=1, count=3,  stackMax=20 },
     [2006] = { id=2006, name="传送卷轴",     icon="ItemIcons/68_31100068", type="Consumable", quality=2, count=2,  stackMax=10 },
-    [2007] = { id=2007, name="大回复药水",   icon="ItemIcons/63_31100063", type="Consumable", quality=2, count=10, stackMax=50 },
+    [2007] = { id=2007, name="大回复药水",   icon="ItemIcons/63_31100063", type="Consumable", quality=2, count=10, stackMax=50, useValue=60, description="回复 60 点生命值" },
     [2008] = { id=2008, name="大法力药水",   icon="ItemIcons/64_31100064", type="Consumable", quality=2, count=8,  stackMax=50 },
     [2009] = { id=2009, name="隐身药水",     icon="ItemIcons/65_31100065", type="Consumable", quality=2, count=3,  stackMax=10 },
     [2010] = { id=2010, name="疾跑药水",     icon="ItemIcons/66_31100066", type="Consumable", quality=2, count=5,  stackMax=10 },
