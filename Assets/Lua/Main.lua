@@ -11,6 +11,14 @@ local function AddTestItems()
     if pd == nil then
         return
     end
+
+    -- 本次已从存档还原（PlayerData.Load 在 Main.cs 中先于本脚本执行）：
+    -- 直接沿用存档数据，跳过测试物品，否则每次进游戏都会在存档基础上重复叠加。
+    if pd.loadedFromSave then
+        print("[Main] 检测到存档，跳过测试数据（非空格子数: " .. pd:CountNonEmptySlots() .. "）")
+        return
+    end
+
     if pd.inventorySlots.Count == 0 then
         pd:InitInventory(120)
     end
@@ -60,4 +68,4 @@ end
 AddTestItems()
 
 local BagPanelCtrl = require("Bag.BagPanelCtrl")
-BagPanelCtrl.Init()
+BagPanelCtrl.Init() --找到UI组件 绑定世界内部执行refresh.

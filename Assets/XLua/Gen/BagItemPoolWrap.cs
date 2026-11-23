@@ -21,9 +21,10 @@ namespace XLua.CSObjectWrap
         {
 			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
 			System.Type type = typeof(BagItemPool);
-			Utils.BeginObjectRegister(type, L, translator, 0, 3, 1, 1);
+			Utils.BeginObjectRegister(type, L, translator, 0, 4, 1, 1);
 			
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "Init", _m_Init);
+			Utils.RegisterFunc(L, Utils.METHOD_IDX, "EnsureSize", _m_EnsureSize);
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "Get", _m_Get);
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "RecycleAll", _m_RecycleAll);
 			
@@ -92,6 +93,34 @@ namespace XLua.CSObjectWrap
                     int _size = LuaAPI.xlua_tointeger(L, 2);
                     
                     gen_to_be_invoked.Init( _size );
+                    
+                    
+                    
+                    return 0;
+                }
+                
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _m_EnsureSize(RealStatePtr L)
+        {
+		    try {
+            
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+            
+            
+                BagItemPool gen_to_be_invoked = (BagItemPool)translator.FastGetCSObj(L, 1);
+            
+            
+                
+                {
+                    int _size = LuaAPI.xlua_tointeger(L, 2);
+                    
+                    gen_to_be_invoked.EnsureSize( _size );
                     
                     
                     

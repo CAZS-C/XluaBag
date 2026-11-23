@@ -1,0 +1,23 @@
+ManifestFileVersion: 0
+CRC: 3441831100
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: e63f50489077be316ab73fed6268d9eb
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 5ad585dd02dfb5016c0dad519eab8f49
+HashAppended: 0
+ClassTypes:
+- Class: 49
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/ABRes/Lua/Main.lua.txt
+- Assets/ABRes/Lua/Object.lua.txt
+- Assets/ABRes/Lua/Config/ItemConfig.lua.txt
+- Assets/ABRes/Lua/Bag/ItemCellCtrl.lua.txt
+- Assets/ABRes/Lua/SplitTools.lua.txt
+- Assets/ABRes/Lua/JsonUtility.lua.txt
+- Assets/ABRes/Lua/Bag/BagPanelCtrl.lua.txt
+Dependencies: []

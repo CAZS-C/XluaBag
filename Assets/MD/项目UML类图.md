@@ -18,6 +18,8 @@ Assets/
 │   │       ├── BaseManager.cs          # 纯 C# 单例基类
 │   │       ├── SingletonMono.cs        # Mono 单例基类（手动挂载）
 │   │       └── SingletonAutoMono.cs    # Mono 单例基类（自动创建）
+│   ├── HotUpdate/                      # 热更新：版本/差量/下载/校验/回滚/启动器
+│   ├── Perf/                           # PerfHUD（FPS/帧时间/GC/DrawCall/Batches）
 │   └── UI/
 │       ├── BagGridLayout.cs            # 虚拟化网格布局
 │       └── BagItemPool.cs              # 格子对象池
@@ -33,14 +35,24 @@ Assets/
 │   └── Config/
 │       └── ItemConfig.lua              # 物品配置表（假数据）
 │
+├── Editor/
+│   ├── LuaBundleTool.cs                # Lua → AB 一键转换/打包（仅编辑器编译）
+│   └── HotUpdate/                      # 发布工具 + 启动场景创建
+│
 ├── ABRes/                              # AB 资源包
-│   └── Prefabs/UI/
-│       ├── BagPanel.prefab             # 背包面板
-│       ├── BagItemCell.prefab          # 单个格子
-│       └── MainPanel.prefab            # 主面板
+│   ├── Prefabs/UI/
+│   │   ├── BagPanel.prefab             # 背包面板
+│   │   ├── BagItemCell.prefab          # 单个格子
+│   │   └── MainPanel.prefab            # 主面板
+│   ├── Lua/                            # 工具生成的 .lua.txt（AB 名 "lua"）
+│   └── HotUpdate/Banner.txt            # 公告资源（AB 名 "banner"）
+│
+├── StreamingAssets/{PC|Android|IOS}/   # 基础包（PC / lua / banner + version.json）
 │
 ├── ArtRes/                             # 美术资源
-│   └── UI/                             # UI 图标、背景等
+│   └── UI/ItemIcons/                   # 物品图标源文件（供 SpriteAtlas 引用）
+│
+├── Resources/ItemIconAtlas.spriteatlas # 运行时图集（10 张图标合并）
 │
 ├── MD/                                 # 设计文档
 │   ├── 开发商业背包UI的方案(MVS).md
@@ -49,7 +61,8 @@ Assets/
 │   └── 该项目的背包系统架构以及最终成果的初步预想.md
 │
 ├── Scenes/
-│   └── SampleScene.unity               # 当前场景
+│   ├── LaunchScene.unity               # 热更新启动场景
+│   └── SampleScene.unity               # 背包场景
 │
 └── XLua/                               # XLua 框架
     ├── Src/                            # XLua 源码
@@ -411,7 +424,11 @@ S3 ✅ 数据管理层 (InventoryManager / InventoryEvent)
 S4 ✅ 虚拟网格渲染 (BagGridLayout / BagItemPool)
 S5 ✅ Lua 业务层 (BagPanelCtrl 接入真实数据 + 真实排序)
 S6 ✅ 格子交互 (ItemCellCtrl)
-S7 ❌ 联调 + 存档闭环
+S7 ✅ 联调 + 存档闭环 + 性能压测 (500 物品 → 28 格；Frame Debugger 27 events)
+Phase 0 ✅ 刷新粒度与稳定性 (单格刷新 / EnsureSize / 事件退订 / pcall)
+S8 ✅ 热更新闭环 (manifest 版本 + hash 差量 + 下载校验 + pending/confirm 回滚)
+S9 ✅ 性能观测与图集化 (SpriteAtlas 10→1 + PerfHUD；Item Tab 总数未降，该页图标种类少)
+工具 ✅ Lua 一键打包 (LuaBundleTool: .lua → .lua.txt → AB 标记 → 按平台构建)
 ```
 
 ---

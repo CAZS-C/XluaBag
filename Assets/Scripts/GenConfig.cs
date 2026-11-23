@@ -27,6 +27,7 @@ public static class GenConfig
         typeof(ItemInstance),
         typeof(ItemSlot),
         typeof(InventoryEvent),
+        typeof(IconAtlasLoader),
     };
 
     [CSharpCallLua]
@@ -37,5 +38,18 @@ public static class GenConfig
         typeof(Action),
         typeof(Action<SlotChangeData>),
         typeof(Action<int, int>),
+    };
+
+    /// <summary>
+    /// 代码生成黑名单：这些成员只存在于编辑器版 UnityEngine 程序集，
+    /// 生成进 Wrap 后编辑器能编译，但打包/构建 AB 时触发的 Player 编译会报 CS1061。
+    /// 本项目的 Lua 业务用不到 Light，因此直接排除，保证工程可打包。
+    /// </summary>
+    [BlackList]
+    public static List<List<string>> BlackList = new List<List<string>>()
+    {
+        new List<string>() { "UnityEngine.Light", "SetLightDirty" },
+        new List<string>() { "UnityEngine.Light", "shadowRadius" },
+        new List<string>() { "UnityEngine.Light", "shadowAngle" },
     };
 }

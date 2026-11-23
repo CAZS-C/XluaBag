@@ -41,6 +41,7 @@ local QUALITY_COLORS = {
 local SELECT_COLOR = { r = 1.0, g = 0.92, b = 0.3, a = 0.8 }
 
 -- 加载图标（带缓存）
+-- 优先从 SpriteAtlas 取图（同屏图标合批）；图集未就绪时退回 Resources 单图加载
 local function LoadIcon(path)
     if not path or path == "" then
         return nil
@@ -48,7 +49,12 @@ local function LoadIcon(path)
     if iconCache[path] then
         return iconCache[path]
     end
-    local sprite = UnityEngine.Resources.Load(path, typeof(UnityEngine.Sprite))
+
+    local sprite = CS.IconAtlasLoader.Get(path)
+    if sprite == nil then
+        sprite = UnityEngine.Resources.Load(path, typeof(UnityEngine.Sprite))
+    end
+
     iconCache[path] = sprite
     return sprite
 end
@@ -64,24 +70,32 @@ function ItemCellCtrl.Bind(cellGo, slotData)
             txtCount   = trans:Find("txtCount"):GetComponent(typeof(TMP.TextMeshProUGUI)),
             btn        = cellGo:GetComponent(typeof(UI.Button)),
             uid        = 0,
+            onClick    = nil,
         }
         cellTransformCache[cellGo] = cache
 
         -- 首次绑定点击事件（只绑定一次，之后复用闭包捕获的 cellGo）
+        -- 保存成 cache.onClick：Shutdown 时需要用同一个函数引用 RemoveListener，
+        -- 否则 LuaEnv.Dispose 会报 "try to dispose a LuaEnv with C# callback!"
         if cache.btn then
-            cache.btn.onClick:AddListener(function()
+            cache.onClick = function()
                 if ItemCellCtrl.onCellClick then
                     ItemCellCtrl.onCellClick(cellGo, cache.uid)
                 end
-            end)
+            end
+            cache.btn.onClick:AddListener(cache.onClick)
         end
     end
 
     cache.uid = slotData.uid or 0
 
-    -- 图标：从 Resources 按 iconPath 加载（带缓存），失败时隐藏
-    if slotData.icon and cache.imgIcon then
-        local sprite = LoadIcon(slotData.icon)
+    -- 图标：从 Resources 按 iconPath 加载（带缓存）
+    -- 注意：icon 为空时也必须清空 sprite，否则格子复用时会把上一个物品的图标留下来。
+    if cache.imgIcon then
+        local sprite = nil
+        if slotData.icon and slotData.icon ~= "" then
+            sprite = LoadIcon(slotData.icon)
+        end
         cache.imgIcon.sprite = sprite
         cache.imgIcon.gameObject:SetActive(sprite ~= nil)
     end
@@ -106,11 +120,47 @@ function ItemCellCtrl.Bind(cellGo, slotData)
         cache.imgSelect.gameObject:SetActive(false)
     end
 end
-
+--打开 / 关闭选中高亮显示（imgSelect 显隐）
 function ItemCellCtrl.SetSelected(cellGo, selected)
     local cache = cellTransformCache[cellGo]
     if cache and cache.imgSelect then
         cache.imgSelect.gameObject:SetActive(selected)
+    end
+end
+
+-- 清空格子：槽位不存在 / 物品已被移除时调用，避免格子复用后残留上一件物品的显示
+function ItemCellCtrl.Clear(cellGo)
+    local cache = cellTransformCache[cellGo]
+    if not cache then
+        return
+    end
+
+    cache.uid = 0
+    if cache.imgIcon then
+        cache.imgIcon.sprite = nil
+        cache.imgIcon.gameObject:SetActive(false)
+    end
+    if cache.imgQuality then
+        cache.imgQuality.gameObject:SetActive(false)
+    end
+    if cache.txtCount then
+        cache.txtCount.gameObject:SetActive(false)
+    end
+    if cache.imgSelect then
+        cache.imgSelect.gameObject:SetActive(false)
+    end
+end
+
+-- 移除所有格子的点击监听：LuaEnv.Dispose 前必须清掉，
+-- 否则 xLua 会检测到仍有 C# 回调并拒绝 Dispose。
+function ItemCellCtrl.Shutdown()
+    for _, cache in pairs(cellTransformCache) do
+        if cache.btn ~= nil and cache.onClick ~= nil then
+            pcall(function()
+                cache.btn.onClick:RemoveListener(cache.onClick)
+            end)
+            cache.onClick = nil
+        end
     end
 end
 

@@ -191,9 +191,15 @@ public class InventoryManager : SingletonMono<InventoryManager>
     /// <summary>
     /// 排序（按品质降序 → id 升序）。后续可由 Lua 传入自定义排序规则。
     ///
-    /// 注意：这里必须保存 ItemSlot 的"值副本"（instance 引用 + count），
-    /// 而不能保存 ItemSlot 对象本身——因为后续 Slots[i].Clear() 会清空同一个对象，
-    /// 导致副本里的数据也被清空（引用类型陷阱）。
+    /// 注意：
+    ///   1. 这里必须保存 ItemSlot 的"值副本"（instance 引用 + count），
+    ///      而不能保存 ItemSlot 对象本身——因为后续 Slots[i].Clear() 会清空同一个对象，
+    ///      导致副本里的数据也被清空（引用类型陷阱）。
+    ///   2. 排序属于"布局变化"，不再逐槽位发 OnSlotChanged：
+    ///      调用方（BagPanelCtrl.Refresh）在排序完成后自行重建映射并全量刷新。
+    ///      否则一次排序会触发几十次事件，UI 端即使有防重入也会做几十次无效回调。
+    ///   3. 配置缺失（Definition == null）时按 quality=0 排在最后，
+    ///      不能直接跳过——否则清空槽位后该物品会丢失。
     /// </summary>
     public void Sort()
     {
@@ -201,6 +207,8 @@ public class InventoryManager : SingletonMono<InventoryManager>
         List<ItemInstance> items = new List<ItemInstance>();
         List<int> counts = new List<int>();
         List<int> indexes = new List<int>();
+        bool hasMissingDefinition = false;
+
         for (int i = 0; i < Slots.Count; i++)
         {
             if (!Slots[i].IsEmpty)
@@ -208,6 +216,10 @@ public class InventoryManager : SingletonMono<InventoryManager>
                 items.Add(Slots[i].instance);
                 counts.Add(Slots[i].count);
                 indexes.Add(i);
+                if (Slots[i].instance.Definition == null)
+                {
+                    hasMissingDefinition = true;
+                }
             }
         }
 
@@ -218,8 +230,10 @@ public class InventoryManager : SingletonMono<InventoryManager>
         {
             ItemDefinition da = items[a].Definition;
             ItemDefinition db = items[b].Definition;
-            if (da.quality != db.quality)
-                return db.quality.CompareTo(da.quality);
+            QualityLevel qa = da != null ? da.quality : (QualityLevel)0;
+            QualityLevel qb = db != null ? db.quality : (QualityLevel)0;
+            if (qa != qb)
+                return qb.CompareTo(qa);
             return items[a].defId.CompareTo(items[b].defId);
         });
 
@@ -233,7 +247,11 @@ public class InventoryManager : SingletonMono<InventoryManager>
             int src = order[i];
             Slots[indexes[i]].instance = items[src];
             Slots[indexes[i]].count = counts[src];
-            EmitSlotChanged(indexes[i]);
+        }
+
+        if (hasMissingDefinition)
+        {
+            Debug.LogWarning("InventoryManager.Sort：存在未注册的 ItemDefinition，已按 quality=0 排在最后");
         }
     }
 

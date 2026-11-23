@@ -22,6 +22,13 @@ public class PlayerData : SingletonMono<PlayerData>
     /// </summary>
     public List<ItemSlot> inventorySlots = new List<ItemSlot>();
 
+    /// <summary>
+    /// 本次运行是否成功从存档还原。
+    /// 供 C# 侧判断/打日志用；用 NonSerialized 标记，避免它被 JsonUtility 写进存档（它不是玩家数据）。
+    /// </summary>
+    [System.NonSerialized]
+    public bool loadedFromSave;
+
     private const string SAVE_KEY = "PlayerData";
 
     /// <summary>
@@ -37,24 +44,109 @@ public class PlayerData : SingletonMono<PlayerData>
     }
 
     /// <summary>
-    /// 保存数据到 PlayerPrefs
+    /// 保存数据到 PlayerPrefs。
+    /// 触发时机：OnApplicationQuit（编辑器里停止 Play Mode 也会触发），以及 Inspector 右键菜单手动调用。
     /// </summary>
     public void Save()
     {
         string json = JsonUtility.ToJson(this);
         PlayerPrefs.SetString(SAVE_KEY, json);
         PlayerPrefs.Save();
+        Debug.Log($"[PlayerData] 存档完成，非空格子 {CountNonEmptySlots()}");
     }
 
     /// <summary>
-    /// 从 PlayerPrefs 读档；无存档时保持现状
+    /// 从 PlayerPrefs 读档。
+    /// 返回值：true = 成功还原存档；false = 没有存档或存档损坏（调用方按"新号"处理）。
     /// </summary>
-    public void Load()
+    public bool Load()
     {
+        loadedFromSave = false;
+
         string json = PlayerPrefs.GetString(SAVE_KEY, "");
-        if (!string.IsNullOrEmpty(json))
+        if (string.IsNullOrEmpty(json))
         {
+            Debug.Log("[PlayerData] 无存档，按新号初始化");
+            return false;
+        }
+
+        try
+        {
+            // FromJsonOverwrite：把 JSON 字段覆盖到现有对象上，保留对象引用（场景里的 PlayerData 继续有效）
             JsonUtility.FromJsonOverwrite(json, this);
         }
+        catch (System.Exception e)
+        {
+            // 存档损坏不应该让游戏启动失败：打错误日志后按无存档处理
+            Debug.LogError("[PlayerData] 存档解析失败，按新号处理：" + e.Message);
+            return false;
+        }
+
+        if (inventorySlots == null)
+        {
+            inventorySlots = new List<ItemSlot>();
+        }
+
+        // 修复 uid 计数器：静态计数器每次运行从 1 开始，读档后必须抬到"存档最大 uid + 1"，
+        // 否则本局新增物品的 uid 会与存档中的旧 uid 重复，破坏 UI 的 uid 锚定。
+        int maxUid = 0;
+        for (int i = 0; i < inventorySlots.Count; i++)
+        {
+            ItemSlot slot = inventorySlots[i];
+            if (slot != null && !slot.IsEmpty && slot.instance.uid > maxUid)
+            {
+                maxUid = slot.instance.uid;
+            }
+        }
+        ItemInstance.EnsureUidCounterAbove(maxUid);
+
+        loadedFromSave = true;
+        Debug.Log($"[PlayerData] 读档完成，非空格子 {CountNonEmptySlots()}，最大 uid {maxUid}");
+        return true;
+    }
+
+    /// <summary>
+    /// 退出时自动存档（编辑器里停止 Play Mode、打包后关闭游戏都会触发）。
+    /// </summary>
+    private void OnApplicationQuit()
+    {
+        Save();
+    }
+
+    /// <summary>
+    /// 切到后台时存档。
+    /// 移动端进程被系统杀掉时 OnApplicationQuit 不一定触发，OnApplicationPause(true) 更可靠。
+    /// </summary>
+    private void OnApplicationPause(bool pauseStatus)
+    {
+        if (pauseStatus)
+        {
+            Save();
+        }
+    }
+
+    /// <summary>
+    /// 清空存档（Inspector 中右键组件可调用），用于重新验证"首次运行"流程。
+    /// </summary>
+    [ContextMenu("清空存档")]
+    public void ClearSave()
+    {
+        PlayerPrefs.DeleteKey(SAVE_KEY);
+        PlayerPrefs.Save();
+        Debug.Log("[PlayerData] 存档已清空");
+    }
+
+    /// <summary>
+    /// 统计非空格子数（仅用于日志与验证，不影响数据）
+    /// </summary>
+    public int CountNonEmptySlots()
+    {
+        if (inventorySlots == null) return 0;
+        int count = 0;
+        for (int i = 0; i < inventorySlots.Count; i++)
+        {
+            if (inventorySlots[i] != null && !inventorySlots[i].IsEmpty) count++;
+        }
+        return count;
     }
 }

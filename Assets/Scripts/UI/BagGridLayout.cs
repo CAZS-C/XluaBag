@@ -42,6 +42,10 @@ public class BagGridLayout : MonoBehaviour
     // Lua 绑定回调：onCellBind(index, cellGo)，每帧可见范围变化时触发
     public System.Action<int, GameObject> onCellBind;
 
+    // Lua 回收回调：在格子被回收/重建前触发。
+    // Lua 用它清空"显示位置 → 格子"的临时映射，避免持有已经复用到别的位置的格子。
+    public System.Action onCellRecycled;
+
     private void Awake()
     {
         content = GetComponent<RectTransform>();
@@ -79,7 +83,12 @@ public class BagGridLayout : MonoBehaviour
         // 池子大小 = 列数 * (可视行 + 2 行缓冲)
         int visibleRows = Mathf.CeilToInt(viewport.rect.height / cellStepY);
         int poolRows = visibleRows + 2;
-        pool.Init(colCount * poolRows);
+
+        // 先通知 Lua 清空"位置 → 格子"映射（池子重建/回收后旧引用会失效）
+        onCellRecycled?.Invoke();
+
+        // 容量没变时只回收，不销毁重建；这是数据刷新不产生 Instantiate/Destroy 的关键
+        pool.EnsureSize(colCount * poolRows);
 
         OnScroll(scrollRect.normalizedPosition);
     }
@@ -114,12 +123,15 @@ public class BagGridLayout : MonoBehaviour
         lastStartIndex = startIndex;
         lastEndIndex = endIndex;
 
-        // 范围变了：先回收旧格子，再取出新格子
+        // 范围变了：先通知 Lua 清空旧映射，再回收旧格子
+        onCellRecycled?.Invoke();
         pool.RecycleAll();
 
         for (int i = startIndex; i <= endIndex; i++)
         {
             GameObject cell = pool.Get();
+            // 可视范围额外带了缓冲行，请求数可能比池子容量多几格；
+            // 多出来的都在屏幕外，跳过不会造成视觉缺失。
             if (cell == null) continue;
             PositionCell(cell, i);
             onCellBind?.Invoke(i, cell);

@@ -23,7 +23,8 @@ public class BagItemPool : MonoBehaviour
 
     /// <summary>
     /// 初始化池子：销毁旧格子，创建指定数量的新格子，初始为未激活状态。
-    /// BagGridLayout.Refresh 时调用，Tab 切换会触发池子重建。
+    /// 仅在池子容量真的变化时使用（例如窗口尺寸变化导致可视行数变化）。
+    /// 数据刷新/切 Tab 应优先调用 EnsureSize，避免无意义的销毁重建。
     /// </summary>
     public void Init(int size)
     {
@@ -43,8 +44,28 @@ public class BagItemPool : MonoBehaviour
     }
 
     /// <summary>
+    /// 确保池子容量为 size：
+    ///   容量相同 → 只回收当前激活的格子，不销毁/不实例化；
+    ///   容量不同 → 才走 Init 重建。
+    ///
+    /// 这是"一次数据变化不再产生 28 次 Instantiate + 28 次 Destroy"的关键。
+    /// </summary>
+    public void EnsureSize(int size)
+    {
+        if (allCells.Count == size)
+        {
+            RecycleAll();
+            return;
+        }
+        Init(size);
+    }
+
+    /// <summary>
     /// 从池中取一个格子，激活后返回。
     /// 由 BagGridLayout.OnScroll 遍历可见索引时调用。
+    ///
+    /// 返回 null 的情况：可视范围计算包含上下缓冲行，请求数可能比池子多几格；
+    /// 多出来的位置都在屏幕外，调用方 continue 跳过不会造成视觉缺失。
     /// </summary>
     public GameObject Get()
     {
@@ -56,7 +77,7 @@ public class BagItemPool : MonoBehaviour
 
     /// <summary>
     /// 回收所有激活的格子，放回空闲队列。
-    /// 每帧 OnScroll 触发前先回收，再重新分配可见格子。
+    /// 只在可视范围真的变化（或池子容量变化）时调用，不是每帧调用。
     /// </summary>
     public void RecycleAll()
     {

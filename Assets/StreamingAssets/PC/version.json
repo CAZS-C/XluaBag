@@ -1,0 +1,23 @@
+{
+    "resVersion": 1,
+    "bundles": [
+        {
+            "name": "PC",
+            "file": "PC",
+            "md5": "5727dbbc7afd8be06574c459ef71cc69",
+            "size": 1596
+        },
+        {
+            "name": "banner",
+            "file": "banner",
+            "md5": "a4011f606908716516c6bbbf8beaab03",
+            "size": 1308
+        },
+        {
+            "name": "lua",
+            "file": "lua",
+            "md5": "50920acc98d480bc101ea193cac7b41e",
+            "size": 20336
+        }
+    ]
+}

@@ -5,16 +5,18 @@
 --   替代早期版本的 Lua ItemConfig 假数据。
 --
 -- 职责：
---   1. Init 时获取 BagGridLayout 引用，绑定 onCellBind 回调。
+--   1. Init 时获取 BagGridLayout 引用，绑定 onCellBind / onCellRecycled 回调。
 --   2. 为三个 Tab Toggle（Equip / Item / Gem）绑定切换事件。
---   3. OnTabChanged：调 InventoryManager.Sort 真实重排 → 按类型筛选 → 建立 uid 映射 → grid:Refresh。
---   4. OnCellBind：通过 uid 反查真实槽位，渲染该物品。
---   5. 订阅 InventoryEvent.OnSlotChanged，数据变化时刷新当前 Tab。
+--   3. OnTabChanged：调 InventoryManager.Sort 真实重排 → 按类型筛选 → 建立映射 → grid:Refresh。
+--   4. OnCellBind：通过显示位置直接取真实槽位，渲染该物品。
+--   5. 订阅 InventoryEvent.OnSlotChanged，按变化类型决定"只刷一格"还是"全量刷新"。
 --
--- 关键设计：uid 锚定
---   排序后显示顺序 != 真实槽位顺序，因此 UI 层保存"显示位置 → 物品 uid"映射，
---   交互（点选/后续右键）一律用 uid 反查真实槽位，保证操作对象永远正确。
---   见 MD 文档《背包系统架构方案(简练级)》数据流章节。
+-- 关键设计：
+--   A. uid 锚定：UI 以 uid 识别物品，排序/筛选后点选不错位。
+--   B. 单格刷新：只有"同一槽位、同一 uid、只有数量变化"时才只重绑一格；
+--      新增 / 移除 / 换 Tab 属于列表成员变化，才全量刷新 + 排序。
+--   C. 事件退订：Shutdown 时用同一个函数引用退订，避免 LuaEnv 释放后
+--      C# 静态事件仍持有 DelegateBridge。
 
 local ItemCellCtrl = require("Bag/ItemCellCtrl")
 
@@ -22,12 +24,24 @@ local BagPanelCtrl = {}
 
 local grid
 local inventoryMgr
-local initialized = false -- Init 防重入：避免重复订阅事件 / 重复绑定回调
-local displayToUid = {}   -- 显示位置(0-based) → 物品实例 uid
-local displayToCell = {}  -- 显示位置(0-based) → 格子 GameObject（用于更新选中高亮）
+local initialized = false
 local currentTabType = "Equipment"
-local selectedUid = 0     -- 当前选中的物品 uid（0 = 未选中）
-local refreshing = false  -- 防重入标志：Sort 发事件 → Refresh 回调 → 再 Sort 会死循环
+local selectedUid = 0
+local refreshing = false -- 防重入：全量刷新期间忽略事件
+
+-- 显示位置(1-based) → uid / 真实槽位索引(0-based)
+local displayToUid = {}
+local displayToSlot = {}
+-- 真实槽位索引(0-based) → 显示位置(1-based)
+local slotToDisplay = {}
+-- 显示位置(1-based) → 当前真正绑定在该位置的格子（滚动回收时清空）
+local displayToCell = {}
+
+-- 事件回调必须保存成具名引用：退订时要用同一个函数
+local slotChangedHandler = nil
+
+-- Tab Toggle 的 Lua 监听：LuaEnv.Dispose 前必须 RemoveListener，否则 UnityEvent 会一直持有 DelegateBridge
+local tabListeners = {}
 
 -- Tab 路径和类型映射，与预制体中的命名一致
 local TAB_CONFIG = {
@@ -35,6 +49,113 @@ local TAB_CONFIG = {
     { path = "Canvas/BagPanel/TabItem",  type = "Item" },
     { path = "Canvas/BagPanel/TabGem",   type = "Gem" },
 }
+
+-- 当前 Tab 是否匹配某个物品模板
+local function MatchesTab(def)
+    if def == nil then
+        return false
+    end
+    if currentTabType == "Equipment" then
+        return def.type == CS.ItemType.Equipment
+    elseif currentTabType == "Item" then
+        return def.type == CS.ItemType.Consumable
+    elseif currentTabType == "Gem" then
+        return def.type == CS.ItemType.Gem
+    end
+    return false
+end
+
+-- 用真实槽位数据刷新单个格子（图标 / 数量 / 品质 / 选中）
+local function BindCell(cellGo, slot)
+    if cellGo == nil then
+        return
+    end
+    if slot == nil or slot.IsEmpty then
+        ItemCellCtrl.Clear(cellGo)
+        return
+    end
+
+    local def = slot.instance.Definition
+    ItemCellCtrl.Bind(cellGo, {
+        itemId  = slot.instance.defId,
+        uid     = slot.instance.uid,
+        count   = slot.count,
+        quality = def and def.qualityValue or 1,
+        icon    = def and def.iconPath or nil,
+        name    = def and def.name or "",
+    })
+    ItemCellCtrl.SetSelected(cellGo, slot.instance.uid == selectedUid)
+end
+
+-- 重建"显示位置 ↔ 真实槽位"映射
+local function RebuildDisplay()
+    displayToUid = {}
+    displayToSlot = {}
+    slotToDisplay = {}
+
+    local slots = inventoryMgr.Slots
+    for i = 0, slots.Count - 1 do
+        local slot = slots[i]
+        if not slot.IsEmpty and MatchesTab(slot.instance.Definition) then
+            table.insert(displayToUid, slot.instance.uid)
+            table.insert(displayToSlot, i)
+            slotToDisplay[i] = #displayToUid
+        end
+    end
+end
+
+-- 单格事件处理：只在"同一槽位、同一 uid、数量变化"时走快路径
+local function HandleSlotChanged(data)
+    if not initialized or refreshing then
+        return
+    end
+
+    local pos = slotToDisplay[data.index]
+    local uid = data.item and data.item.uid or 0
+    local itemMatches = data.item ~= nil and MatchesTab(data.item.Definition)
+
+    if pos ~= nil then
+        -- 该槽位当前显示在当前 Tab：只有数量变化可以原地重绑
+        if itemMatches and uid == displayToUid[pos] then
+            local cellGo = displayToCell[pos]
+            if cellGo ~= nil then
+                BindCell(cellGo, inventoryMgr.Slots[data.index])
+            end
+            return
+        end
+
+        -- 物品消失 / 被替换 / 不再属于当前 Tab：列表成员变了，全量刷新
+        BagPanelCtrl.Refresh(true)
+        return
+    end
+
+    -- 槽位原本不在当前 Tab：只有"新增了一个属于当前 Tab 的物品"才需要刷新
+    if itemMatches then
+        BagPanelCtrl.Refresh(true)
+    end
+end
+
+-- 安全包装：Lua 回调报错不能冒泡到 C# 的事件派发 / AddItem 循环
+local function SafeSlotChanged(data)
+    local ok, err = pcall(HandleSlotChanged, data)
+    if not ok then
+        print("[BagPanelCtrl] OnSlotChanged error: " .. tostring(err))
+    end
+end
+
+local function SafeOnCellBind(index, cellGo)
+    local ok, err = pcall(BagPanelCtrl.OnCellBind, index, cellGo)
+    if not ok then
+        print("[BagPanelCtrl] OnCellBind error: " .. tostring(err))
+    end
+end
+
+local function SafeOnCellClick(cellGo, uid)
+    local ok, err = pcall(BagPanelCtrl.OnCellClick, cellGo, uid)
+    if not ok then
+        print("[BagPanelCtrl] OnCellClick error: " .. tostring(err))
+    end
+end
 
 function BagPanelCtrl.Init()
     -- 防重入：Init 只执行一次，避免重复订阅事件导致一次变化触发多次刷新
@@ -51,18 +172,18 @@ function BagPanelCtrl.Init()
     if grid == nil then
         return
     end
-    grid.onCellBind = BagPanelCtrl.OnCellBind
+    grid.onCellBind = SafeOnCellBind
+    grid.onCellRecycled = BagPanelCtrl.OnCellRecycled
 
     -- 获取 InventoryManager（数据源）
     inventoryMgr = CS.InventoryManager.GetInstance()
 
     -- 注入格子点击回调：点击格子 → uid 反查真实槽位 → 选中
-    ItemCellCtrl.onCellClick = BagPanelCtrl.OnCellClick
+    ItemCellCtrl.onCellClick = SafeOnCellClick
 
-    -- 订阅背包数据变化事件（XLua 用 "+" 字符串订阅 C# 事件），变化时刷新当前 Tab
-    CS.InventoryEvent.OnSlotChanged("+", function(data)
-        BagPanelCtrl.Refresh()
-    end)
+    -- 订阅背包数据变化事件：回调保存成具名函数，Shutdown 时才能退订
+    slotChangedHandler = SafeSlotChanged
+    CS.InventoryEvent.OnSlotChanged("+", slotChangedHandler)
 
     -- 绑定 Tab Toggle 事件
     for i, tab in ipairs(TAB_CONFIG) do
@@ -78,73 +199,99 @@ function BagPanelCtrl.Init()
     BagPanelCtrl.OnTabChanged("Equipment")
 end
 
+-- 退订 + 清理引用：LuaMgr.Dispose 前调用，避免 DelegateBridge 指向已释放的 LuaEnv
+function BagPanelCtrl.Shutdown()
+    if slotChangedHandler ~= nil then
+        CS.InventoryEvent.OnSlotChanged("-", slotChangedHandler)
+        slotChangedHandler = nil
+    end
+
+    -- 移除 Tab Toggle 的 Lua 监听
+    for path, entry in pairs(tabListeners) do
+        if entry.toggle ~= nil and entry.listener ~= nil then
+            pcall(function()
+                entry.toggle.onValueChanged:RemoveListener(entry.listener)
+            end)
+        end
+    end
+    tabListeners = {}
+
+    -- 移除格子的点击监听
+    ItemCellCtrl.Shutdown()
+
+    if grid ~= nil then
+        grid.onCellBind = nil
+        grid.onCellRecycled = nil
+    end
+    ItemCellCtrl.onCellClick = nil
+
+    displayToUid = {}
+    displayToSlot = {}
+    slotToDisplay = {}
+    displayToCell = {}
+    selectedUid = 0
+    initialized = false
+end
+
 function BagPanelCtrl.BindTab(path, tabType)
     local toggleGO = CS.UnityEngine.GameObject.Find(path)
     if not toggleGO then
         return
     end
     local toggle = toggleGO:GetComponent(typeof(CS.UnityEngine.UI.Toggle))
-    toggle.onValueChanged:AddListener(function(isOn)
+    local listener = function(isOn)
         if isOn then
             BagPanelCtrl.OnTabChanged(tabType)
         end
-    end)
+    end
+    toggle.onValueChanged:AddListener(listener)
+    tabListeners[path] = { toggle = toggle, listener = listener }
 end
 
 function BagPanelCtrl.OnTabChanged(tabType)
     currentTabType = tabType
-    BagPanelCtrl.Refresh()
+    -- 切 Tab 属于列表结构变化：排序 + 全量重建映射
+    BagPanelCtrl.Refresh(true)
 end
 
--- 刷新：真实排序 → 按类型筛选 → 建立 uid 映射 → 驱动网格
-function BagPanelCtrl.Refresh()
+-- 刷新：按需排序 → 筛选 → 建立映射 → 驱动网格
+-- needSort：只有"切 Tab / 列表成员变化"才传 true；
+--           纯数量变化走 HandleSlotChanged 的单格路径，不进入本函数。
+function BagPanelCtrl.Refresh(needSort)
     if not inventoryMgr then
         return
     end
-    -- 防重入：Sort 触发的 OnSlotChanged 事件回调 Refresh 时直接忽略，
-    -- 避免 Refresh → Sort → 事件 → Refresh 的无限循环
     if refreshing then
         return
     end
     refreshing = true
 
-    -- 1. 真实排序（按品质降序重排槽位，符合设计文档 Sort() 语义）
-    inventoryMgr:Sort()
-
-    -- 2. 遍历槽位，筛选当前 Tab 类型，同时记录显示位置 → uid 映射
-    displayToUid = {}
-    displayToCell = {}
-    local slots = inventoryMgr.Slots
-    local realSlotCount = slots.Count
-
-    local typeName = currentTabType
-    for i = 0, realSlotCount - 1 do
-        local slot = slots[i]
-        if slot.instance ~= nil then
-            local def = slot.instance.Definition
-            if def ~= nil then
-                local matches = false
-                if typeName == "Equipment" then
-                    matches = (def.type == CS.ItemType.Equipment)
-                elseif typeName == "Item" then
-                    matches = (def.type == CS.ItemType.Consumable)
-                elseif typeName == "Gem" then
-                    matches = (def.type == CS.ItemType.Gem)
-                end
-
-                if matches then
-                    table.insert(displayToUid, slot.instance.uid)
-                end
-            end
+    local ok, err = pcall(function()
+        -- 1. 需要时真实排序（按品质降序重排槽位）
+        if needSort then
+            inventoryMgr:Sort()
         end
-    end
 
-    -- 3. 驱动网格
-    if grid then
-        grid:Refresh(#displayToUid)
-    end
+        -- 2. 选中项有效性校验：物品被彻底移除时清空过期选中。
+        -- 注意：不能用 displayToUid 判断——切 Tab 只是显示过滤，物品仍在背包，选中必须保留。
+        if selectedUid > 0 and inventoryMgr:GetSlotIndexByUid(selectedUid) < 0 then
+            selectedUid = 0
+            inventoryMgr:SelectSlot(-1) -- 同步数据层选中状态
+        end
+
+        -- 3. 重建"显示位置 ↔ 真实槽位"映射
+        RebuildDisplay()
+
+        -- 4. 驱动网格
+        if grid then
+            grid:Refresh(#displayToUid)
+        end
+    end)
 
     refreshing = false
+    if not ok then
+        print("[BagPanelCtrl] Refresh error: " .. tostring(err))
+    end
 end
 
 -- 格子点击回调：用 uid 反查真实槽位并选中
@@ -160,7 +307,7 @@ function BagPanelCtrl.OnCellClick(cellGo, uid)
         selectedUid = uid
     end
 
-    -- 通知数据层选中状态（广播 OnSelectionChanged）
+    -- 通知数据层选中状态（只在这里做一次 uid 反查，点击不是高频路径）
     local slotIdx = inventoryMgr:GetSlotIndexByUid(uid)
     if slotIdx >= 0 then
         inventoryMgr:SelectSlot(selectedUid > 0 and slotIdx or -1)
@@ -178,34 +325,29 @@ function BagPanelCtrl.RefreshSelected()
     end
 end
 
+-- 滚动回收 / 池子重建前由 C# 调用：清空"位置 → 格子"映射
+function BagPanelCtrl.OnCellRecycled()
+    displayToCell = {}
+end
+
 function BagPanelCtrl.OnCellBind(index, cellGo)
     -- index 是 C# 传入的 0-based 显示位置
-    local uid = displayToUid[index + 1]
-    if not uid then
+    local pos = index + 1
+    local slotIdx = displayToSlot[pos]
+    if slotIdx == nil then
+        ItemCellCtrl.Clear(cellGo)
         return
     end
-    displayToCell[index + 1] = cellGo
 
-    -- 用 uid 反查真实槽位，渲染物品
-    local slotIdx = inventoryMgr:GetSlotIndexByUid(uid)
-    if slotIdx < 0 then
-        return
-    end
+    displayToCell[pos] = cellGo
 
     local slot = inventoryMgr.Slots[slotIdx]
-    local def = slot.instance.Definition
+    if slot == nil or slot.IsEmpty then
+        ItemCellCtrl.Clear(cellGo)
+        return
+    end
 
-    ItemCellCtrl.Bind(cellGo, {
-        itemId  = slot.instance.defId,
-        uid     = slot.instance.uid,
-        count   = slot.count,
-        quality = def and def.qualityValue or 1,
-        icon    = def and def.iconPath or nil,
-        name    = def and def.name or "",
-    })
-
-    -- 恢复选中高亮（滚动重绑格子后保持选中状态）
-    ItemCellCtrl.SetSelected(cellGo, uid == selectedUid)
+    BindCell(cellGo, slot)
 end
 
 return BagPanelCtrl

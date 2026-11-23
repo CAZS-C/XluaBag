@@ -1,0 +1,27 @@
+{
+    "appVersion": "0.1",
+    "resVersion": 2,
+    "minAppVersion": "0.1",
+    "forceUpdate": false,
+    "notice": "热更 v2：更新 Lua 逻辑与公告资源",
+    "bundles": [
+        {
+            "name": "PC",
+            "file": "PC",
+            "md5": "cd69769bc65f3bbfa07f668c5bcac447",
+            "size": 1596
+        },
+        {
+            "name": "banner",
+            "file": "banner",
+            "md5": "9dd141347ac5302cc6b8a278f9156b35",
+            "size": 1428
+        },
+        {
+            "name": "lua",
+            "file": "lua",
+            "md5": "50920acc98d480bc101ea193cac7b41e",
+            "size": 20336
+        }
+    ]
+}

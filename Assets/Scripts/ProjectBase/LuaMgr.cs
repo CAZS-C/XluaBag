@@ -30,7 +30,8 @@ public class LuaMgr : BaseManager<LuaMgr>
     {
         get
         {
-            return luaEnv.Global;
+            // Dispose 之后返回 null，避免访问已释放的 LuaEnv
+            return luaEnv != null ? luaEnv.Global : null;
         }
     }
 
@@ -56,14 +57,25 @@ public class LuaMgr : BaseManager<LuaMgr>
     private byte[] MyCustomLoaderFormAB(ref string filepath)
     {
         //改为我们的AB包管理器加载
-        //无需转换点号，AB 中文件路径统一使用斜杠
+        //路径约定与 Editor/LuaBundleTool 一致：
+        //  资源名（Lua 里的 require）= "Bag.BagPanelCtrl" 或 "Bag/BagPanelCtrl"
+        //  包内资源路径        = "Assets/ABRes/Lua/Bag/BagPanelCtrl.lua.txt"
+        // 用"工程相对路径 + 扩展名"作为 LoadAsset 的键最精确，
+        // 避免不同目录下的同名 Lua 文件互相覆盖。
         try
         {
-            TextAsset file2 = ABMgr.GetInstance().LoadRes<TextAsset>("lua", filepath.Replace(".", "/") + ".lua");
+            string rel = filepath.Replace(".", "/");
+            string assetPath = "Assets/ABRes/Lua/" + rel + ".lua.txt";
+            TextAsset file2 = ABMgr.GetInstance().LoadRes<TextAsset>("lua", assetPath);
             if (file2 != null)
+            {
+                Debug.Log("[LuaMgr] 从 AB 加载 Lua：" + assetPath);
                 return file2.bytes;
+            }
             else
-                Debug.Log("MyCustomLoaderFormAB重定向失败");
+            {
+                Debug.Log("MyCustomLoaderFormAB重定向失败：" + assetPath);
+            }
         }
         catch (System.Exception e)
         {
@@ -73,34 +85,87 @@ public class LuaMgr : BaseManager<LuaMgr>
     }
 
     /// <summary>
-    /// 执行lua文件
+    /// 执行lua文件。
+    /// 返回 false 表示 Lua 抛异常（已记录日志）；调用方可以据此决定是否继续初始化，
+    /// 避免异常直接冒到 MonoBehaviour.Start 导致半个模块初始化。
     /// </summary>
     /// <param name="fileName"></param>
     /// <param name="formWhere"></param>
-    public void DoLuaFile(string fileName, string formWhere = null)
+    public bool DoLuaFile(string fileName, string formWhere = null)
     {
+        if (luaEnv == null)
+        {
+            Debug.LogError("[LuaMgr] DoLuaFile 失败：LuaEnv 尚未初始化");
+            return false;
+        }
+
         string str = string.Format("require('{0}')", fileName);
-        luaEnv.DoString(str);
+        try
+        {
+            luaEnv.DoString(str);
+            return true;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("[LuaMgr] 执行 " + fileName + " 失败：" + e);
+            return false;
+        }
     }
 
     //执行Lua脚本
     public void DoString(string luaScript, string fromWhere = null)
     {
+        if (luaEnv == null)
+        {
+            Debug.LogError("[LuaMgr] DoString 失败：LuaEnv 尚未初始化");
+            return;
+        }
         luaEnv.DoString(luaScript, fromWhere);
     }
 
     //释放垃圾
     public void Tick()
     {
+        if (luaEnv == null)
+        {
+            return;
+        }
         luaEnv.Tick();
     }
 
     //销毁
     public void Dispose()
     {
-        luaEnv.Tick();
-        luaEnv.Dispose();
-        
+        if (luaEnv == null)
+        {
+            return;
+        }
+
+        // 先让 Lua 侧退订 C# 静态事件（BagPanelCtrl.Shutdown），
+        // 否则 LuaEnv 释放后，InventoryEvent 里仍留着指向旧 Lua 环境的 DelegateBridge。
+        try
+        {
+            luaEnv.DoString("local m = package.loaded['Bag.BagPanelCtrl']; if m and m.Shutdown then m.Shutdown() end");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("[LuaMgr] Lua 侧 Shutdown 失败：" + e.Message);
+        }
+
+        try
+        {
+            luaEnv.Tick();
+            luaEnv.Dispose();
+            Debug.Log("[LuaMgr] LuaEnv 已释放");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("[LuaMgr] Dispose 失败：" + e.Message);
+        }
+        finally
+        {
+            luaEnv = null;
+        }
     }
     
     

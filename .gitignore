@@ -112,3 +112,14 @@ InitTestScene*.unity*
 
 # Personal interview prep (not for version control)
 /面试准备.md
+/简历-两版.md
+/BOSS实习岗位清单.md
+/实习岗位匹配清单.md
+/投递优先级清单.md
+/android_test.txt
+*.lnk
+*.lnk.meta
+
+# IDE workspace (JetBrains Rider)
+/.idea/
+/.run/

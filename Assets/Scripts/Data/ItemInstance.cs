@@ -9,6 +9,7 @@ using System.Collections.Generic;
 ///   2. 序列化时只存 defId（int），不存 ItemDefinition 引用：
 ///      一方面避免 JsonUtility 存档时把整个模板冗余写入；
 ///      另一方面加载存档后通过 defId 查注册表即可重建 Definition，保证全局共享一份模板。
+///
 ///   3. level / gemIds 为装备扩展字段（强化等级、镶嵌宝石），普通消耗品默认不启用。
 /// </summary>
 [Serializable]
@@ -54,5 +55,21 @@ public class ItemInstance
         inst.uid = uidCounter++;
         inst.defId = defId;
         return inst;
+    }
+
+    /// <summary>
+    /// 读档后调用：把静态 uid 计数器抬到「存档中最大 uid + 1」，保证后续新建实例不会复用旧 uid。
+    ///
+    /// 为什么必须做：
+    ///   uidCounter 是静态变量，每次运行都从 1 重新开始；读档会把上一局的 uid（例如 1~67）还原回来。
+    ///   如果不抬高计数器，之后 AddItem 生成的新实例会再次拿到 1、2、3……
+    ///   而 UI 交互（点选/反查槽位）以 uid 为锚，一旦重复就会选中错误的物品。
+    /// </summary>
+    public static void EnsureUidCounterAbove(int maxUid)
+    {
+        if (maxUid >= uidCounter)
+        {
+            uidCounter = maxUid + 1;
+        }
     }
 }

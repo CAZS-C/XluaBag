@@ -25,6 +25,7 @@
 		<type fullname="ItemInstance" preserve="all"/>
 		<type fullname="ItemSlot" preserve="all"/>
 		<type fullname="InventoryEvent" preserve="all"/>
+		<type fullname="IconAtlasLoader" preserve="all"/>
 		<type fullname="Tutorial.BaseClass" preserve="all"/>
 		<type fullname="Tutorial.TestEnum" preserve="all"/>
 		<type fullname="Tutorial.DerivedClass" preserve="all"/>

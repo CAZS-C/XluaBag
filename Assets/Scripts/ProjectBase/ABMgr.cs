@@ -25,13 +25,38 @@ public class ABMgr : SingletonAutoMono<ABMgr>
     private Dictionary<string, AssetBundle> abDic = new Dictionary<string, AssetBundle>();
 
     /// <summary>
+    /// AB 根目录（包含 PC / lua / banner 的目录）。
+    /// 为空时由 ResPathResolver 解析：更新版本目录优先，StreamingAssets 兜底。
+    /// 热更新切换版本时由 HotUpdateLauncher 设置。
+    /// </summary>
+    private string bundleRootOverride;
+
+    public string BundleRoot
+    {
+        get
+        {
+            if (!string.IsNullOrEmpty(bundleRootOverride))
+            {
+                return bundleRootOverride;
+            }
+            return ResPathResolver.GetCurrentBundleRoot();
+        }
+        set
+        {
+            bundleRootOverride = string.IsNullOrEmpty(value) ? null : value.Replace('\\', '/');
+            ClearAB();
+        }
+    }
+
+    /// <summary>
     /// 这个AB包存放路径 方便修改
+    /// 根目录 + 平台主包名（PC/Android/IOS）。
     /// </summary>
     private string PathUrl
     {
         get
         {
-            return Application.streamingAssetsPath + "/";
+            return (BundleRoot + "/").Replace('\\', '/');
         }
     }
 

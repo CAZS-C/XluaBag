@@ -21,7 +21,7 @@ namespace XLua.CSObjectWrap
         {
 			ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
 			System.Type type = typeof(BagGridLayout);
-			Utils.BeginObjectRegister(type, L, translator, 0, 1, 6, 6);
+			Utils.BeginObjectRegister(type, L, translator, 0, 1, 7, 7);
 			
 			Utils.RegisterFunc(L, Utils.METHOD_IDX, "Refresh", _m_Refresh);
 			
@@ -32,6 +32,7 @@ namespace XLua.CSObjectWrap
             Utils.RegisterFunc(L, Utils.GETTER_IDX, "padding", _g_get_padding);
             Utils.RegisterFunc(L, Utils.GETTER_IDX, "pool", _g_get_pool);
             Utils.RegisterFunc(L, Utils.GETTER_IDX, "onCellBind", _g_get_onCellBind);
+            Utils.RegisterFunc(L, Utils.GETTER_IDX, "onCellRecycled", _g_get_onCellRecycled);
             
 			Utils.RegisterFunc(L, Utils.SETTER_IDX, "colCount", _s_set_colCount);
             Utils.RegisterFunc(L, Utils.SETTER_IDX, "cellSize", _s_set_cellSize);
@@ -39,6 +40,7 @@ namespace XLua.CSObjectWrap
             Utils.RegisterFunc(L, Utils.SETTER_IDX, "padding", _s_set_padding);
             Utils.RegisterFunc(L, Utils.SETTER_IDX, "pool", _s_set_pool);
             Utils.RegisterFunc(L, Utils.SETTER_IDX, "onCellBind", _s_set_onCellBind);
+            Utils.RegisterFunc(L, Utils.SETTER_IDX, "onCellRecycled", _s_set_onCellRecycled);
             
 			
 			Utils.EndObjectRegister(type, L, translator, null, null,
@@ -199,6 +201,20 @@ namespace XLua.CSObjectWrap
             return 1;
         }
         
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _g_get_onCellRecycled(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                BagGridLayout gen_to_be_invoked = (BagGridLayout)translator.FastGetCSObj(L, 1);
+                translator.Push(L, gen_to_be_invoked.onCellRecycled);
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 1;
+        }
+        
         
         
         [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
@@ -286,6 +302,21 @@ namespace XLua.CSObjectWrap
 			
                 BagGridLayout gen_to_be_invoked = (BagGridLayout)translator.FastGetCSObj(L, 1);
                 gen_to_be_invoked.onCellBind = translator.GetDelegate<System.Action<int, UnityEngine.GameObject>>(L, 2);
+            
+            } catch(System.Exception gen_e) {
+                return LuaAPI.luaL_error(L, "c# exception:" + gen_e);
+            }
+            return 0;
+        }
+        
+        [MonoPInvokeCallbackAttribute(typeof(LuaCSFunction))]
+        static int _s_set_onCellRecycled(RealStatePtr L)
+        {
+		    try {
+                ObjectTranslator translator = ObjectTranslatorPool.Instance.Find(L);
+			
+                BagGridLayout gen_to_be_invoked = (BagGridLayout)translator.FastGetCSObj(L, 1);
+                gen_to_be_invoked.onCellRecycled = translator.GetDelegate<System.Action>(L, 2);
             
             } catch(System.Exception gen_e) {
                 return LuaAPI.luaL_error(L, "c# exception:" + gen_e);

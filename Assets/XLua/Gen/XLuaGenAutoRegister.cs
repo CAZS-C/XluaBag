@@ -64,6 +64,9 @@ namespace XLua.CSObjectWrap
             translator.DelayWrapLoader(typeof(InventoryEvent), InventoryEventWrap.__Register);
         
         
+            translator.DelayWrapLoader(typeof(IconAtlasLoader), IconAtlasLoaderWrap.__Register);
+        
+        
             translator.DelayWrapLoader(typeof(object), SystemObjectWrap.__Register);
         
         
@@ -171,13 +174,13 @@ namespace XLua.CSObjectWrap
         
             translator.DelayWrapLoader(typeof(XLuaTest.MyStruct), XLuaTestMyStructWrap.__Register);
         
-        
-            translator.DelayWrapLoader(typeof(XLuaTest.MyEnum), XLuaTestMyEnumWrap.__Register);
-        
         }
         
         static void wrapInit1(LuaEnv luaenv, ObjectTranslator translator)
         {
+        
+            translator.DelayWrapLoader(typeof(XLuaTest.MyEnum), XLuaTestMyEnumWrap.__Register);
+        
         
             translator.DelayWrapLoader(typeof(XLuaTest.NoGc), XLuaTestNoGcWrap.__Register);
         
