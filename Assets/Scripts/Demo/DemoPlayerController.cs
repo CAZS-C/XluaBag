@@ -2,7 +2,8 @@ using UnityEngine;
 
 /// <summary>
 /// 演示场景玩家控制器：
-///   - 只做最简单的上下左右四向移动（不允许斜向，避免斜向速度比直线快）
+///   - 支持上下左右 + 四个斜向组合（共 8 个方向）
+///   - 斜向输入会归一化，保证斜向速度和直线速度一致
 ///   - 用边界 clamp 代替物理碰撞，Demo 场景不需要 Rigidbody/Collider
 ///   - 背包打开或 HUD 弹层出现时通过 InputEnabled 锁住移动
 ///
@@ -45,27 +46,13 @@ public class DemoPlayerController : MonoBehaviour
 
         float x = Input.GetAxisRaw("Horizontal");
         float y = Input.GetAxisRaw("Vertical");
+        Vector2 input = new Vector2(x, y);
 
-        // 严格四向：同时按两个方向时只保留位移更大的那个轴
-        if (Mathf.Abs(x) > Mathf.Abs(y))
-        {
-            y = 0f;
-        }
-        else if (Mathf.Abs(y) > 0f)
-        {
-            x = 0f;
-        }
-        else
-        {
-            return;
-        }
+        if (input.sqrMagnitude < 0.01f) return;
 
-        Vector2 dir = new Vector2(Mathf.Sign(x), Mathf.Sign(y));
-        if (Mathf.Abs(x) < 0.01f) dir.x = 0f;
-        if (Mathf.Abs(y) < 0.01f) dir.y = 0f;
-
-        if (dir.sqrMagnitude < 0.001f) return;
-
+        // 归一化后斜向（左上/左下/右上/右下）与直线速度一致，
+        // 不会出现“斜着走更快”的问题。
+        Vector2 dir = input.normalized;
         Facing = dir;
         Vector3 next = transform.position + (Vector3)(dir * moveSpeed * Time.deltaTime);
         next.x = Mathf.Clamp(next.x, boundsMin.x, boundsMax.x);

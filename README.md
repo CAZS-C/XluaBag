@@ -49,7 +49,7 @@
 2. 打开场景 `Assets/Scenes/DemoScene.unity`
 3. 进入 Play Mode
 4. 操作：
-   - `WASD`：四向移动（不允许斜向）
+   - `WASD`：八向移动（含左上/左下/右上/右下斜向，斜向速度已归一化）
    - `F`：靠近地面物品时拾取
    - `B` / `ESC` / 关闭按钮 / 右下角“背包”按钮：打开或关闭背包
    - 左键格子：选中；右键格子：使用 / 丢弃 / 取消
@@ -239,7 +239,7 @@ LaunchScene / HotUpdateLauncher
 `DemoScene` 用固定 2D 俯视表现承载完整的背包交互：
 
 ```
-玩家四向移动
+玩家八向移动（含斜向组合）
   → 靠近地面物品显示 [F 拾取]
   → AddItem → Toast → 立即存档
   → B / ESC / 按钮打开背包
@@ -253,7 +253,7 @@ LaunchScene / HotUpdateLauncher
 
 | 模块 | 职责 |
 |---|---|
-| `DemoPlayerController` | 严格四向移动、边界 clamp、朝向标记 |
+| `DemoPlayerController` | 八向移动（斜向归一化）、边界 clamp、朝向标记 |
 | `DemoWorld` / `WorldItem` | 初始/掉落物生成、最近物品查询、拾取与存档同步 |
 | `DemoHUD` | 帮助、HP、装备、拾取提示、Toast、重置按钮 |
 | `BagPanelView` | 背包显示/隐藏、关闭按钮、`B`/`ESC`、打开后刷新 |

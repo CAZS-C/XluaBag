@@ -431,7 +431,7 @@ S7 ✅ 联调 + 存档闭环 + 性能压测 (500 物品 → 28 格；Frame Debug
 Phase 0 ✅ 刷新粒度与稳定性 (单格刷新 / EnsureSize / 事件退订 / pcall)
 S8 ✅ 热更新闭环 (manifest 版本 + hash 差量 + 下载校验 + pending/confirm 回滚)
 S9 ✅ 性能观测与图集化 (SpriteAtlas 10→1 + PerfHUD；Item Tab 总数未降，该页图标种类少)
-S10 ✅ 演示闭环 (DemoScene + 四向移动 + F 拾取 + 背包开关 + 右键使用/丢弃 + 存档/重置)
+S10 ✅ 演示闭环 (DemoScene + 八向移动 + F 拾取 + 背包开关 + 右键使用/丢弃 + 存档/重置)
 工具 ✅ Lua 一键打包 (LuaBundleTool: .lua → .lua.txt → AB 标记 → 按平台构建)
 ```
 
